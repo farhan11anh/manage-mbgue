@@ -51,6 +51,8 @@ export const api = {
   deleteMenu: (id: number) => request(`/menus/${id}`, { method: 'DELETE' }),
   updateMenuStatus: (id: number, status: string) =>
     request(`/menus/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  setActualMenu: (id: number, actualMenuName: string) =>
+    request(`/menus/${id}/actual`, { method: 'PATCH', body: JSON.stringify({ actualMenuName }) }),
 
   // Ingredients
   getIngredients: (menuId: number) => request<{ ingredients: any[] }>(`/menus/${menuId}/ingredients`),

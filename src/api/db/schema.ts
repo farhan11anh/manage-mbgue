@@ -24,6 +24,7 @@ export const menuProposals = sqliteTable('menu_proposals', {
   dayOfWeek: text('day_of_week').notNull(), // "Senin" | "Selasa" | ... | "Minggu"
   mealType: text('meal_type').notNull(), // "Sarapan" | "Makan Siang" | "Makan Malam"
   menuName: text('menu_name').notNull(),
+  actualMenuName: text('actual_menu_name'), // Menu yang benar-benar dimasak (bisa beda dari usulan)
   description: text('description'),
   status: text('status').notNull().default('proposed'), // "proposed" | "approved" | "rejected"
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),

@@ -30,7 +30,9 @@ export default function WeeklyPlanPage() {
   };
 
   const handleDelete = async (menuId: number) => {
-    if (!confirm('Yakin ingin menghapus menu ini?')) return;
+    const menuItem = menus.find(m => m.id === menuId);
+    if (!confirm('⚠️ Yakin ingin menghapus menu "' + (menuItem?.menuName || '') + '"?\n\nSemua data terkait akan ikut terhapus.')) return;
+    if (!confirm('🔴 Konfirmasi sekali lagi: Hapus menu ini?')) return;
     try {
       await api.deleteMenu(menuId);
       loadData();
@@ -93,7 +95,7 @@ export default function WeeklyPlanPage() {
                     <MenuCard
                       key={menu.id}
                       menu={menu}
-                      onDelete={menu.proposedBy === user?.id ? handleDelete : undefined}
+                      onDelete={handleDelete}
                     />
                   ))}
                 </div>

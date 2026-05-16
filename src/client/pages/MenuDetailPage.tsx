@@ -14,11 +14,15 @@ export default function MenuDetailPage() {
   const [menu, setMenu] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actualName, setActualName] = useState('');
+  const [editingActual, setEditingActual] = useState(false);
+  const [savingActual, setSavingActual] = useState(false);
 
   const loadMenu = useCallback(async () => {
     try {
       const res = await api.getMenu(menuId);
       setMenu(res.menu);
+      setActualName(res.menu.actualMenuName || '');
     } catch (e) {
       console.error(e);
     } finally {
@@ -41,12 +45,27 @@ export default function MenuDetailPage() {
   }, [loadMenu, loadComments]);
 
   const handleDelete = async () => {
-    if (!confirm('Yakin ingin menghapus menu ini? Semua data terkait akan ikut terhapus.')) return;
+    if (!confirm('⚠️ Yakin ingin menghapus menu ini?\n\nSemua data terkait (bahan, vote, komentar) akan ikut terhapus. Tindakan ini tidak bisa dibatalkan.')) return;
+    if (!confirm('🔴 Konfirmasi sekali lagi: Hapus menu "' + menu.menuName + '"?')) return;
     try {
       await api.deleteMenu(menuId);
       navigate(-1);
     } catch (e: any) {
       alert(e.message || 'Gagal menghapus');
+    }
+  };
+
+  const handleSaveActual = async () => {
+    if (!actualName.trim()) return;
+    setSavingActual(true);
+    try {
+      await api.setActualMenu(menuId, actualName.trim());
+      setEditingActual(false);
+      loadMenu();
+    } catch (e: any) {
+      alert(e.message || 'Gagal menyimpan');
+    } finally {
+      setSavingActual(false);
     }
   };
 
@@ -81,14 +100,12 @@ export default function MenuDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className={badge.class}>{badge.text}</span>
-            {isOwner && (
-              <button
-                onClick={handleDelete}
-                className="px-3 py-1 rounded-full text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
-              >
-                🗑️ Hapus
-              </button>
-            )}
+            <button
+              onClick={handleDelete}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+            >
+              🗑️ Hapus
+            </button>
           </div>
         </div>
         {menu.description && (
@@ -97,13 +114,62 @@ export default function MenuDetailPage() {
         <VoteButton menuId={menuId} votes={menu.votes} onVoted={loadMenu} />
       </div>
 
+      {/* Menu Sebenarnya */}
+      <div className="glass-card p-6">
+        <h3 className="font-heading font-bold text-lg mb-3">🍽️ Menu Sebenarnya</h3>
+        <p className="text-xs text-text-muted mb-3">
+          Catat menu yang benar-benar dimasak jika berbeda dari usulan. Menu usulan tetap tercatat di atas.
+        </p>
+        {menu.actualMenuName && !editingActual ? (
+          <div className="flex items-center gap-3">
+            <div className="flex-1 px-4 py-3 rounded-xl bg-success/10 border border-success/20">
+              <span className="text-success font-semibold">{menu.actualMenuName}</span>
+              {menu.actualMenuName !== menu.menuName && (
+                <span className="text-xs text-text-muted ml-2">(berbeda dari usulan)</span>
+              )}
+            </div>
+            <button
+              onClick={() => setEditingActual(true)}
+              className="text-xs text-primary hover:text-cyan-300 transition-colors"
+            >
+              Ubah
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              className="input-field flex-1"
+              placeholder="Masukkan nama menu yang benar-benar dimasak..."
+              value={actualName}
+              onChange={e => setActualName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveActual()}
+            />
+            <button
+              onClick={handleSaveActual}
+              disabled={savingActual || !actualName.trim()}
+              className="btn-primary !py-2"
+            >
+              {savingActual ? '...' : 'Simpan'}
+            </button>
+            {editingActual && (
+              <button
+                onClick={() => { setEditingActual(false); setActualName(menu.actualMenuName || ''); }}
+                className="text-text-muted text-sm hover:text-white"
+              >
+                Batal
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Ingredients */}
       <div className="glass-card p-6">
         <h3 className="font-heading font-bold text-lg mb-4">🥬 Bahan Makanan</h3>
         <IngredientTable
           menuId={menuId}
           ingredients={menu.ingredients}
-          editable={isOwner}
+          editable
           onUpdate={loadMenu}
         />
       </div>

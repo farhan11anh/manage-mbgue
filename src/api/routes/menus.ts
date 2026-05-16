@@ -103,12 +103,10 @@ app.patch('/:id', zValidator('json', z.object({
 
 app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user') as AuthUser;
   const db = drizzle(c.env.DB);
 
   const menu = await db.select().from(menuProposals).where(eq(menuProposals.id, id)).get();
   if (!menu) return c.json({ error: 'Menu tidak ditemukan' }, 404);
-  if (menu.proposedBy !== user.id) return c.json({ error: 'Hanya pembuat yang bisa menghapus' }, 403);
 
   await db.delete(ingredients).where(eq(ingredients.menuProposalId, id));
   await db.delete(votes).where(eq(votes.menuProposalId, id));
@@ -116,6 +114,23 @@ app.delete('/:id', async (c) => {
   await db.delete(menuProposals).where(eq(menuProposals.id, id));
 
   return c.json({ message: 'Menu dihapus' });
+});
+
+// Set menu sebenarnya (siapa saja bisa set)
+app.patch('/:id/actual', zValidator('json', z.object({
+  actualMenuName: z.string().min(1),
+})), async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const { actualMenuName } = c.req.valid('json');
+  const db = drizzle(c.env.DB);
+
+  const result = await db.update(menuProposals)
+    .set({ actualMenuName })
+    .where(eq(menuProposals.id, id))
+    .returning();
+  if (!result.length) return c.json({ error: 'Menu tidak ditemukan' }, 404);
+
+  return c.json({ menu: result[0] });
 });
 
 app.patch('/:id/status', zValidator('json', z.object({
