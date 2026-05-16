@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import VoteButton from '../components/VoteButton';
 import IngredientTable from '../components/IngredientTable';
 import CommentSection from '../components/CommentSection';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function MenuDetailPage() {
   const { id } = useParams();
@@ -13,6 +14,7 @@ export default function MenuDetailPage() {
   const menuId = parseInt(id!);
   const [menu, setMenu] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actualName, setActualName] = useState('');
   const [editingActual, setEditingActual] = useState(false);
@@ -45,8 +47,6 @@ export default function MenuDetailPage() {
   }, [loadMenu, loadComments]);
 
   const handleDelete = async () => {
-    if (!confirm('⚠️ Yakin ingin menghapus menu ini?\n\nSemua data terkait (bahan, vote, komentar) akan ikut terhapus. Tindakan ini tidak bisa dibatalkan.')) return;
-    if (!confirm('🔴 Konfirmasi sekali lagi: Hapus menu "' + menu.menuName + '"?')) return;
     try {
       await api.deleteMenu(menuId);
       navigate(-1);
@@ -101,7 +101,7 @@ export default function MenuDetailPage() {
           <div className="flex items-center gap-2">
             <span className={badge.class}>{badge.text}</span>
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteModal(true)}
               className="px-3 py-1 rounded-full text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
             >
               🗑️ Hapus
@@ -176,6 +176,19 @@ export default function MenuDetailPage() {
 
       {/* Comments */}
       <CommentSection menuId={menuId} comments={comments} onUpdate={loadComments} />
+
+      {/* Delete confirmation modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Hapus Menu?"
+        message={`Menu "${menu.menuName}" beserta semua bahan, vote, dan komentar akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+        confirmText="Ya, Hapus Menu"
+        cancelText="Batal"
+        danger
+        requireType="HAPUS"
+        onConfirm={() => { setShowDeleteModal(false); handleDelete(); }}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 }

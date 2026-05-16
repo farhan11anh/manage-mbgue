@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import MenuCard from '../components/MenuCard';
+import ConfirmModal from '../components/ConfirmModal';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 const MEAL_TYPES = ['Sarapan', 'Makan Siang', 'Makan Malam'];
@@ -14,6 +15,7 @@ export default function WeeklyPlanPage() {
   const [menus, setMenus] = useState<any[]>([]);
   const [filterDay, setFilterDay] = useState('');
   const [filterMeal, setFilterMeal] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -31,10 +33,14 @@ export default function WeeklyPlanPage() {
 
   const handleDelete = async (menuId: number) => {
     const menuItem = menus.find(m => m.id === menuId);
-    if (!confirm('⚠️ Yakin ingin menghapus menu "' + (menuItem?.menuName || '') + '"?\n\nSemua data terkait akan ikut terhapus.')) return;
-    if (!confirm('🔴 Konfirmasi sekali lagi: Hapus menu ini?')) return;
+    setDeleteTarget({ id: menuId, name: menuItem?.menuName || '' });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await api.deleteMenu(menuId);
+      await api.deleteMenu(deleteTarget.id);
+      setDeleteTarget(null);
       loadData();
     } catch (e: any) {
       alert(e.message || 'Gagal menghapus');
@@ -104,6 +110,19 @@ export default function WeeklyPlanPage() {
           );
         })}
       </div>
+
+      {/* Delete confirmation modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Hapus Menu?"
+        message={`Menu "${deleteTarget?.name || ''}" beserta semua bahan, vote, dan komentar akan dihapus permanen.`}
+        confirmText="Ya, Hapus"
+        cancelText="Batal"
+        danger
+        requireType="HAPUS"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
