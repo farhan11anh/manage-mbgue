@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg-dark text-text-main font-body;
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 20%, rgba(162, 89, 255, 0.08) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-bg-glass backdrop-blur-xl border border-white/10 rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply px-6 py-2.5 rounded-full font-semibold text-bg-dark
+           bg-gradient-to-r from-primary to-cyan-300
+           hover:shadow-neon transition-all duration-300 ease-out
+           hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-2.5 rounded-full font-semibold text-white
+           bg-gradient-to-r from-secondary to-orange-400
+           hover:shadow-neon-secondary transition-all duration-300 ease-out
+           hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-accent {
+    @apply px-6 py-2.5 rounded-full font-semibold text-white
+           bg-gradient-to-r from-accent to-purple-400
+           hover:shadow-neon-accent transition-all duration-300 ease-out
+           hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-bg-card border border-white/10
+           text-text-main placeholder-text-muted
+           focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50
+           transition-all duration-200;
+  }
+
+  .badge-proposed {
+    @apply px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400;
+  }
+  .badge-approved {
+    @apply px-2 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success;
+  }
+  .badge-rejected {
+    @apply px-2 py-0.5 rounded-full text-xs font-medium bg-danger/20 text-danger;
+  }
+}
