@@ -65,7 +65,21 @@ app.post('/reject/:userId', async (c) => {
   }
 
   await db.delete(users).where(eq(users.id, userId));
-  return c.json({ message: 'User berhasil ditolak' });
+  return c.json({ message: 'User berhasil ditolak dan dihapus' });
+});
+
+app.delete('/users/:userId', async (c) => {
+  const userId = parseUserId(c.req.param('userId'));
+  if (!userId) return c.json({ error: 'User tidak valid' }, 400);
+
+  const db = drizzle(c.env.DB);
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).get();
+  if (!existing) {
+    return c.json({ error: 'User tidak ditemukan' }, 404);
+  }
+
+  await db.delete(users).where(eq(users.id, userId));
+  return c.json({ message: 'User berhasil dihapus' });
 });
 
 app.post('/reset-password/:userId', async (c) => {

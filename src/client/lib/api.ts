@@ -69,6 +69,7 @@ export const api = {
   getUsers: () => request<{ users: AdminUser[] }>('/admin/users'),
   approveUser: (userId: number) => request<{ message: string }>(`/admin/approve/${userId}`, { method: 'POST' }),
   rejectUser: (userId: number) => request<{ message: string }>(`/admin/reject/${userId}`, { method: 'POST' }),
+  deleteUser: (userId: number) => request<{ message: string }>(`/admin/users/${userId}`, { method: 'DELETE' }),
   resetPassword: (userId: number) => request<{ password: string }>(`/admin/reset-password/${userId}`, { method: 'POST' }),
   toggleAdmin: (userId: number) => request<{ message: string; isAdmin: number }>(`/admin/toggle-admin/${userId}`, { method: 'POST' }),
 

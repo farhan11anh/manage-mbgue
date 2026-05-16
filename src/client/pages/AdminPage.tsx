@@ -55,7 +55,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const [rejectTarget, setRejectTarget] = useState<AdminUser | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'approve' | 'reject' | 'delete' | 'reset' | 'toggle-admin';
+    user: AdminUser;
+  } | null>(null);
   const [passwordResult, setPasswordResult] = useState<{ username: string; password: string } | null>(null);
 
   const loadUsers = async () => {
@@ -85,6 +88,73 @@ export default function AdminPage() {
       setBusyId(null);
     }
   };
+
+  const handleConfirm = async () => {
+    if (!confirmAction) return;
+    const { type, user: target } = confirmAction;
+    setConfirmAction(null);
+
+    await runAction(target.id, async () => {
+      switch (type) {
+        case 'approve':
+          await api.approveUser(target.id);
+          break;
+        case 'reject':
+          await api.rejectUser(target.id);
+          break;
+        case 'delete':
+          await api.deleteUser(target.id);
+          break;
+        case 'reset': {
+          const res = await api.resetPassword(target.id);
+          setPasswordResult({ username: target.username, password: res.password });
+          break;
+        }
+        case 'toggle-admin':
+          await api.toggleAdmin(target.id);
+          break;
+      }
+    });
+  };
+
+  const confirmConfig: Record<string, { title: string; message: string; confirmText: string; danger: boolean; requireType?: string }> = {
+    approve: {
+      title: 'Setujui User?',
+      message: `User @${confirmAction?.user.username ?? ''} (${confirmAction?.user.displayName ?? ''}) akan disetujui dan bisa mengakses aplikasi.`,
+      confirmText: 'Ya, Setujui',
+      danger: false,
+    },
+    reject: {
+      title: 'Tolak User?',
+      message: `User @${confirmAction?.user.username ?? ''} akan ditolak dan dihapus dari sistem. Tindakan ini tidak bisa dibatalkan.`,
+      confirmText: 'Ya, Tolak',
+      danger: true,
+      requireType: 'TOLAK',
+    },
+    delete: {
+      title: 'Hapus User?',
+      message: `User @${confirmAction?.user.username ?? ''} (${confirmAction?.user.displayName ?? ''}) akan dihapus permanen dari sistem. Tindakan ini tidak bisa dibatalkan.`,
+      confirmText: 'Ya, Hapus',
+      danger: true,
+      requireType: 'HAPUS',
+    },
+    reset: {
+      title: 'Reset Password?',
+      message: `Password user @${confirmAction?.user.username ?? ''} akan di-reset ke password random. User harus ganti password saat login berikutnya.`,
+      confirmText: 'Ya, Reset',
+      danger: true,
+    },
+    'toggle-admin': {
+      title: confirmAction?.user.isAdmin ? 'Cabut Hak Admin?' : 'Jadikan Admin?',
+      message: confirmAction?.user.isAdmin
+        ? `Hak admin @${confirmAction?.user.username ?? ''} akan dicabut.`
+        : `@${confirmAction?.user.username ?? ''} akan dijadikan admin dan bisa mengelola user lain.`,
+      confirmText: confirmAction?.user.isAdmin ? 'Ya, Cabut' : 'Ya, Jadikan Admin',
+      danger: !!confirmAction?.user.isAdmin,
+    },
+  };
+
+  const currentConfig = confirmAction ? confirmConfig[confirmAction.type] : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -134,23 +204,19 @@ export default function AdminPage() {
                       <div className="mt-1 text-xs text-text-muted">Bergabung {new Date(item.createdAt).toLocaleDateString('id-ID')}</div>
                     </td>
                     <td className="px-3 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isApproved ? 'bg-success/15 text-success border border-success/25' : 'bg-secondary/15 text-secondary border border-secondary/25'}`}>
-                          {item.isApproved ? 'Disetujui' : 'Menunggu'}
-                        </span>
-                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isApproved ? 'bg-success/15 text-success border border-success/25' : 'bg-secondary/15 text-secondary border border-secondary/25'}`}>
+                        {item.isApproved ? 'Disetujui' : 'Menunggu'}
+                      </span>
                     </td>
                     <td className="px-3 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isAdmin ? 'bg-primary/15 text-primary border border-primary/25' : 'bg-white/10 text-text-muted border border-white/10'}`}>
-                          {item.isAdmin ? 'Admin' : 'User'}
-                        </span>
-                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isAdmin ? 'bg-primary/15 text-primary border border-primary/25' : 'bg-white/10 text-text-muted border border-white/10'}`}>
+                        {item.isAdmin ? 'Admin' : 'User'}
+                      </span>
                     </td>
                     <td className="px-3 py-4">
                       {item.mustChangePassword ? (
                         <span className="rounded-full border border-accent/25 bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent">
-                          Harus ganti password
+                          Harus ganti
                         </span>
                       ) : (
                         <span className="text-xs text-text-muted">Normal</span>
@@ -158,41 +224,49 @@ export default function AdminPage() {
                     </td>
                     <td className="px-3 py-4">
                       <div className="flex flex-wrap justify-end gap-2">
-                        {!item.isApproved ? (
+                        {!item.isApproved && (
                           <>
                             <button
-                              onClick={() => runAction(item.id, () => api.approveUser(item.id).then(() => undefined))}
+                              onClick={() => setConfirmAction({ type: 'approve', user: item })}
                               disabled={isBusy}
                               className="btn-primary !px-3 !py-2 text-xs"
                             >
                               Setujui
                             </button>
                             <button
-                              onClick={() => setRejectTarget(item)}
+                              onClick={() => setConfirmAction({ type: 'reject', user: item })}
                               disabled={isBusy || isSelf}
                               className="btn-secondary !px-3 !py-2 text-xs"
                             >
                               Tolak
                             </button>
                           </>
-                        ) : null}
+                        )}
+                        {item.isApproved && !isSelf && (
+                          <button
+                            onClick={() => setConfirmAction({ type: 'delete', user: item })}
+                            disabled={isBusy}
+                            className="rounded-full px-3 py-2 text-xs font-semibold bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                          >
+                            🗑️ Hapus
+                          </button>
+                        )}
                         <button
-                          onClick={() => runAction(item.id, async () => {
-                            const res = await api.resetPassword(item.id);
-                            setPasswordResult({ username: item.username, password: res.password });
-                          })}
+                          onClick={() => setConfirmAction({ type: 'reset', user: item })}
                           disabled={isBusy}
                           className="btn-accent !px-3 !py-2 text-xs"
                         >
                           Reset Password
                         </button>
-                        <button
-                          onClick={() => runAction(item.id, () => api.toggleAdmin(item.id).then(() => undefined))}
-                          disabled={isBusy}
-                          className="btn-secondary !px-3 !py-2 text-xs"
-                        >
-                          {item.isAdmin ? 'Cabut Admin' : 'Jadikan Admin'}
-                        </button>
+                        {!isSelf && (
+                          <button
+                            onClick={() => setConfirmAction({ type: 'toggle-admin', user: item })}
+                            disabled={isBusy}
+                            className="btn-secondary !px-3 !py-2 text-xs"
+                          >
+                            {item.isAdmin ? 'Cabut Admin' : 'Jadikan Admin'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -203,20 +277,17 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Confirm modal for all actions */}
       <ConfirmModal
-        isOpen={!!rejectTarget}
-        title="Tolak akun ini?"
-        message={`User @${rejectTarget?.username ?? ''} akan dihapus karena belum disetujui.`}
-        confirmText="Ya, Tolak"
+        isOpen={!!confirmAction}
+        title={currentConfig?.title ?? ''}
+        message={currentConfig?.message ?? ''}
+        confirmText={currentConfig?.confirmText ?? 'Ya'}
         cancelText="Batal"
-        danger
-        requireType="TOLAK"
-        onCancel={() => setRejectTarget(null)}
-        onConfirm={async () => {
-          if (!rejectTarget) return;
-          await runAction(rejectTarget.id, () => api.rejectUser(rejectTarget.id).then(() => undefined));
-          setRejectTarget(null);
-        }}
+        danger={currentConfig?.danger ?? false}
+        requireType={currentConfig?.requireType}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirm}
       />
 
       <PasswordResultModal
