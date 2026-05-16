@@ -31,7 +31,6 @@ function toAuthUser(user: typeof users.$inferSelect): AuthUser {
     id: user.id,
     username: user.username,
     displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
     isAdmin: user.isAdmin,
     mustChangePassword: user.mustChangePassword,
   };
@@ -100,37 +99,6 @@ app.patch('/profile', authMiddleware, zValidator('json', z.object({ displayName:
 
   const result = await db.update(users)
     .set({ displayName })
-    .where(eq(users.id, user.id))
-    .returning();
-
-  const updatedUser = toAuthUser(result[0]);
-  await setAuthCookie(c, updatedUser);
-
-  return c.json({ user: updatedUser });
-});
-
-app.patch('/avatar', authMiddleware, zValidator('json', z.object({ avatarUrl: z.string().url() })), async (c) => {
-  const user = (c as any).get('user') as AuthUser;
-  const { avatarUrl } = c.req.valid('json');
-  const db = drizzle(c.env.DB);
-
-  const result = await db.update(users)
-    .set({ avatarUrl })
-    .where(eq(users.id, user.id))
-    .returning();
-
-  const updatedUser = toAuthUser(result[0]);
-  await setAuthCookie(c, updatedUser);
-
-  return c.json({ user: updatedUser });
-});
-
-app.delete('/avatar', authMiddleware, async (c) => {
-  const user = (c as any).get('user') as AuthUser;
-  const db = drizzle(c.env.DB);
-
-  const result = await db.update(users)
-    .set({ avatarUrl: null })
     .where(eq(users.id, user.id))
     .returning();
 
