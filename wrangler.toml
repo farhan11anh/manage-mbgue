@@ -1,4 +1,4 @@
-name = "mbg-app"
+name = "manage-mbgue"
 main = "src/api/index.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "mbg-database"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "4c272255-6eba-49b4-b0b5-1b30f77978b9"
 
 [site]
 bucket = "./dist"
