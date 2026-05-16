@@ -312,6 +312,12 @@ export default function WeeklyPlanPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-4"
+      >
+        ← Kembali ke Dashboard
+      </Link>
       <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="font-heading font-extrabold text-2xl">{week.label}</h1>
