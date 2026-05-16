@@ -116,7 +116,9 @@ export default function Avatar({ size = 'md', editable = false, name }: AvatarPr
       (error: any, result: any) => {
         if (error) return;
         if (result.event === 'success') {
-          const url = result.info.secure_url;
+          // Use Cloudinary transformation for compressed avatar (200x200, auto quality, webp)
+          const publicId = result.info.public_id;
+          const url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/w_200,h_200,c_fill,g_face,q_auto,f_auto/${publicId}`;
           api.updateAvatar(url)
             .then(res => setUser(res.user))
             .catch(() => alert('Gagal menyimpan foto profil'));
