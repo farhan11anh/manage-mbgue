@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/cloudflare-workers';
+import manifest from '__STATIC_CONTENT_MANIFEST';
 import authRoutes from './routes/auth';
 import weekRoutes from './routes/weeks';
 import menuRoutes, { weekMenus } from './routes/menus';
@@ -25,7 +26,7 @@ app.route('/api/comments', commentRoutes);
 app.route('/api/ingredients', ingredientRoutes);
 
 // Serve static files (built React app)
-app.get('*', serveStatic({ root: './' }));
-app.get('*', serveStatic({ path: './index.html' }));
+app.get('*', serveStatic({ root: './', manifest }));
+app.get('*', serveStatic({ path: './index.html', manifest }));
 
 export default app;
