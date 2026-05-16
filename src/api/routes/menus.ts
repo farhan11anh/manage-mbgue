@@ -116,7 +116,6 @@ app.patch('/:id', zValidator('json', z.object({
 
   const menu = await db.select().from(menuProposals).where(eq(menuProposals.id, id)).get();
   if (!menu) return c.json({ error: 'Menu tidak ditemukan' }, 404);
-  if (menu.proposedBy !== user.id) return c.json({ error: 'Hanya pembuat yang bisa mengedit' }, 403);
 
   const result = await db.update(menuProposals).set(body).where(eq(menuProposals.id, id)).returning();
   return c.json({ menu: result[0] });

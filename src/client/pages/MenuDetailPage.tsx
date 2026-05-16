@@ -19,12 +19,18 @@ export default function MenuDetailPage() {
   const [actualName, setActualName] = useState('');
   const [editingActual, setEditingActual] = useState(false);
   const [savingActual, setSavingActual] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [scheduleDay, setScheduleDay] = useState('');
+  const [scheduleMeal, setScheduleMeal] = useState('');
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   const loadMenu = useCallback(async () => {
     try {
       const res = await api.getMenu(menuId);
       setMenu(res.menu);
       setActualName(res.menu.actualMenuName || '');
+      setScheduleDay(res.menu.dayOfWeek);
+      setScheduleMeal(res.menu.mealType);
     } catch (e) {
       console.error(e);
     } finally {
@@ -69,6 +75,19 @@ export default function MenuDetailPage() {
     }
   };
 
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      await api.updateMenu(menuId, { dayOfWeek: scheduleDay, mealType: scheduleMeal });
+      setEditingSchedule(false);
+      loadMenu();
+    } catch (e: any) {
+      alert(e.message || 'Gagal menyimpan');
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
   if (loading) return <div className="text-center py-20 text-text-muted">Loading...</div>;
   if (!menu) return <div className="text-center py-20 text-danger">Menu tidak ditemukan</div>;
 
@@ -107,9 +126,53 @@ export default function MenuDetailPage() {
                 → {menu.actualMenuName}
               </p>
             )}
-            <p className="text-text-muted text-sm mt-1">
-              {menu.dayOfWeek} · {menu.mealType} · Oleh <span className="text-primary">{menu.proposerName}</span>
-            </p>
+            {!isLocked && editingSchedule ? (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <select
+                  className="input-field !w-auto !py-1.5 text-sm"
+                  value={scheduleDay}
+                  onChange={e => setScheduleDay(e.target.value)}
+                >
+                  {['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'].map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <select
+                  className="input-field !w-auto !py-1.5 text-sm"
+                  value={scheduleMeal}
+                  onChange={e => setScheduleMeal(e.target.value)}
+                >
+                  {['Sarapan','Makan Siang','Makan Malam'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleSaveSchedule}
+                  disabled={savingSchedule}
+                  className="btn-primary text-xs !px-3 !py-1.5"
+                >
+                  {savingSchedule ? '...' : 'Simpan'}
+                </button>
+                <button
+                  onClick={() => { setEditingSchedule(false); setScheduleDay(menu.dayOfWeek); setScheduleMeal(menu.mealType); }}
+                  className="text-text-muted text-xs hover:text-white"
+                >
+                  Batal
+                </button>
+              </div>
+            ) : (
+              <p className="text-text-muted text-sm mt-1">
+                {menu.dayOfWeek} · {menu.mealType} · Oleh <span className="text-primary">{menu.proposerName}</span>
+                {!isLocked && (
+                  <button
+                    onClick={() => setEditingSchedule(true)}
+                    className="ml-2 text-primary/70 hover:text-primary text-xs transition-colors"
+                  >
+                    ✏️ Ganti jadwal
+                  </button>
+                )}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className={badge.class}>{badge.text}</span>
