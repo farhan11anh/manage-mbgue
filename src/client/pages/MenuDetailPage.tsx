@@ -190,6 +190,29 @@ export default function MenuDetailPage() {
         <VoteButton menuId={menuId} votes={menu.votes} onVoted={loadMenu} />
       </div>
 
+      {/* Catalog Info */}
+      {menu.catalogMenu && (
+        <div className="glass-card p-6">
+          <h3 className="font-heading font-bold text-lg mb-3">📖 Info Katalog</h3>
+          <div className="space-y-2">
+            <p className="text-sm"><span className="text-text-muted">Menu katalog:</span> <span className="text-primary font-semibold">{menu.catalogMenu.name}</span></p>
+            {menu.catalogMenu.description && <p className="text-sm text-text-muted">{menu.catalogMenu.description}</p>}
+            {menu.catalogMenu.recipe && (
+              <div>
+                <p className="text-xs font-semibold text-text-muted mb-1">📝 Resep</p>
+                <p className="text-sm whitespace-pre-wrap bg-white/5 rounded-lg p-3">{menu.catalogMenu.recipe}</p>
+              </div>
+            )}
+          </div>
+          {menu.note && (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <p className="text-xs font-semibold text-text-muted mb-1">📌 Catatan Khusus</p>
+              <p className="text-sm">{menu.note}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Menu Sebenarnya — hanya muncul jika terkunci */}
       {isLocked && (
         <div className="glass-card p-6">
@@ -255,20 +278,25 @@ export default function MenuDetailPage() {
         </div>
       )}
 
-      {/* Bahan Usulan — editable hanya jika belum terkunci */}
+      {/* Bahan — from catalog (read-only) or legacy (editable if unlocked) */}
       <div className="glass-card p-6">
         <h3 className="font-heading font-bold text-lg mb-4">
-          🥬 Bahan Makanan {isLocked ? '(Usulan)' : ''}
+          🥬 Bahan Makanan {menu.catalogMenu ? '(dari Katalog)' : isLocked ? '(Usulan)' : ''}
         </h3>
-        {!isLocked && (
+        {!isLocked && !menu.catalogMenu && (
           <p className="text-xs text-text-muted mb-3">
             Menu belum terkunci, bahan masih bisa diedit.
+          </p>
+        )}
+        {menu.catalogMenu && (
+          <p className="text-xs text-text-muted mb-3">
+            Bahan mengikuti katalog. Edit bahan di halaman <a href="/catalog" className="text-primary hover:underline">Katalog Menu</a>.
           </p>
         )}
         <IngredientTable
           menuId={menuId}
           ingredients={menu.ingredients}
-          editable={!isLocked}
+          editable={!isLocked && !menu.catalogMenu}
           onUpdate={loadMenu}
         />
       </div>

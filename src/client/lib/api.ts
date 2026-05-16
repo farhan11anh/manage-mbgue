@@ -14,6 +14,29 @@ export interface AdminUser extends ApiUser {
   avatarUrl?: string | null;
 }
 
+export interface CatalogMenu {
+  id: number;
+  name: string;
+  description?: string | null;
+  recipe?: string | null;
+  createdBy: number;
+  createdAt: string;
+  creatorName?: string;
+  ingredientCount?: number;
+  estimatedPrice?: number;
+  ingredients?: CatalogIngredient[];
+}
+
+export interface CatalogIngredient {
+  id: number;
+  catalogMenuId: number;
+  name: string;
+  quantity: number;
+  unit: string;
+  pricePerUnit: number;
+  totalPrice: number;
+}
+
 export interface WeekSummary {
   weekLabel: string;
   menus: Array<{
@@ -124,6 +147,20 @@ export const api = {
     request(`/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify({ content }) }),
   deleteComment: (commentId: number) =>
     request(`/comments/${commentId}`, { method: 'DELETE' }),
+
+  // Catalog
+  getCatalogMenus: () => request<{ menus: CatalogMenu[] }>('/catalog'),
+  getCatalogMenu: (id: number) => request<{ menu: CatalogMenu }>(`/catalog/${id}`),
+  createCatalogMenu: (data: { name: string; description?: string; recipe?: string }) =>
+    request<{ menu: CatalogMenu }>('/catalog', { method: 'POST', body: JSON.stringify(data) }),
+  updateCatalogMenu: (id: number, data: { name?: string; description?: string; recipe?: string }) =>
+    request<{ menu: CatalogMenu }>(`/catalog/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCatalogMenu: (id: number) => request(`/catalog/${id}`, { method: 'DELETE' }),
+  addCatalogIngredient: (catalogMenuId: number, data: { name: string; quantity: number; unit: string; pricePerUnit: number }) =>
+    request<{ ingredient: CatalogIngredient }>(`/catalog/${catalogMenuId}/ingredients`, { method: 'POST', body: JSON.stringify(data) }),
+  updateCatalogIngredient: (id: number, data: { name?: string; quantity?: number; unit?: string; pricePerUnit?: number }) =>
+    request<{ ingredient: CatalogIngredient }>(`/catalog/ingredients/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCatalogIngredient: (id: number) => request(`/catalog/ingredients/${id}`, { method: 'DELETE' }),
 
   // Export
   exportWeek: async (weekId: number) => {

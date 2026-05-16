@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, sql } from 'drizzle-orm';
-import { menuProposals, ingredients, votes, comments, users, weeks } from '../db/schema';
+import { menuProposals, ingredients, votes, comments, users, weeks, menuCatalog, catalogIngredients } from '../db/schema';
 import { authMiddleware, AuthUser } from '../middleware/auth';
 
 type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } };
@@ -19,11 +19,14 @@ weekMenus.get('/', async (c) => {
   return c.json({ menus });
 });
 
+// Assign catalog menu to a day (or create manual)
 const menuCreateSchema = z.object({
+  catalogMenuId: z.number().optional(),
   dayOfWeek: z.enum(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']),
   mealType: z.enum(['Sarapan', 'Makan Siang', 'Makan Malam']),
-  menuName: z.string().min(1),
+  menuName: z.string().min(1).optional(),
   description: z.string().optional(),
+  note: z.string().optional(),
 });
 
 weekMenus.post('/', zValidator('json', menuCreateSchema), async (c) => {
@@ -32,10 +35,28 @@ weekMenus.post('/', zValidator('json', menuCreateSchema), async (c) => {
   const body = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
+  let menuName = body.menuName || '';
+  let description = body.description || null;
+
+  // If assigning from catalog, get name from catalog
+  if (body.catalogMenuId) {
+    const catalog = await db.select().from(menuCatalog).where(eq(menuCatalog.id, body.catalogMenuId)).get();
+    if (!catalog) return c.json({ error: 'Menu katalog tidak ditemukan' }, 404);
+    menuName = catalog.name;
+    description = catalog.description || description;
+  }
+
+  if (!menuName) return c.json({ error: 'Nama menu wajib diisi' }, 400);
+
   const result = await db.insert(menuProposals).values({
     weekId,
+    catalogMenuId: body.catalogMenuId || null,
     proposedBy: user.id,
-    ...body,
+    dayOfWeek: body.dayOfWeek,
+    mealType: body.mealType,
+    menuName,
+    description,
+    note: body.note || null,
   }).returning();
 
   return c.json({ menu: result[0] }, 201);
@@ -54,10 +75,25 @@ app.get('/:id', async (c) => {
 
   const week = await db.select().from(weeks).where(eq(weeks.id, menu.weekId)).get();
   const proposer = await db.select({ displayName: users.displayName }).from(users).where(eq(users.id, menu.proposedBy)).get();
-  const menuIngredients = await db.select().from(ingredients)
-    .where(sql`${ingredients.menuProposalId} = ${id} AND ${ingredients.isActual} = 0`).all();
+
+  // Get actual ingredients (from ingredients table)
   const actualIngredients = await db.select().from(ingredients)
     .where(sql`${ingredients.menuProposalId} = ${id} AND ${ingredients.isActual} = 1`).all();
+
+  // Get catalog ingredients if linked to catalog
+  let catIngredients: any[] = [];
+  let catalogMenu: any = null;
+  if (menu.catalogMenuId) {
+    catalogMenu = await db.select().from(menuCatalog).where(eq(menuCatalog.id, menu.catalogMenuId)).get();
+    catIngredients = await db.select().from(catalogIngredients)
+      .where(eq(catalogIngredients.catalogMenuId, menu.catalogMenuId)).all();
+  }
+
+  // Fallback: legacy ingredients (non-actual, from ingredients table — for old data)
+  const legacyIngredients = await db.select().from(ingredients)
+    .where(sql`${ingredients.menuProposalId} = ${id} AND ${ingredients.isActual} = 0`).all();
+
+  const proposedIngredients = catIngredients.length > 0 ? catIngredients : legacyIngredients;
 
   const upVotes = await db.select({ count: sql<number>`count(*)` }).from(votes)
     .where(sql`${votes.menuProposalId} = ${id} AND ${votes.voteType} = 'up'`).get();
@@ -67,12 +103,10 @@ app.get('/:id', async (c) => {
   const commentCount = await db.select({ count: sql<number>`count(*)` }).from(comments)
     .where(sql`${comments.menuProposalId} = ${id} AND ${comments.deletedAt} IS NULL`).get();
 
-  // Cek apakah diusulkan telat (setelah minggu berjalan)
   const isLateProposal = week
     ? new Date(menu.createdAt) >= new Date(week.startDate + 'T00:00:00Z')
     : false;
 
-  // Cek apakah menu sudah terkunci (H-1 atau status final)
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   let isLocked = menu.status === 'approved' || menu.status === 'rejected';
@@ -91,9 +125,17 @@ app.get('/:id', async (c) => {
   return c.json({
     menu: {
       ...menu,
+      // Use catalog name if available (live from catalog)
+      menuName: catalogMenu?.name || menu.menuName,
       proposerName: proposer?.displayName,
-      ingredients: menuIngredients,
+      ingredients: proposedIngredients,
       actualIngredients,
+      catalogMenu: catalogMenu ? {
+        id: catalogMenu.id,
+        name: catalogMenu.name,
+        description: catalogMenu.description,
+        recipe: catalogMenu.recipe,
+      } : null,
       votes: { up: upVotes?.count ?? 0, down: downVotes?.count ?? 0 },
       commentCount: commentCount?.count ?? 0,
       isLateProposal,
@@ -108,9 +150,9 @@ app.patch('/:id', zValidator('json', z.object({
   description: z.string().optional(),
   dayOfWeek: z.enum(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']).optional(),
   mealType: z.enum(['Sarapan', 'Makan Siang', 'Makan Malam']).optional(),
+  note: z.string().optional(),
 })), async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = (c as any).get('user') as AuthUser;
   const body = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
@@ -136,7 +178,6 @@ app.delete('/:id', async (c) => {
   return c.json({ message: 'Menu dihapus' });
 });
 
-// Set menu sebenarnya (siapa saja bisa set)
 app.patch('/:id/actual', zValidator('json', z.object({
   actualMenuName: z.string().min(1),
 })), async (c) => {

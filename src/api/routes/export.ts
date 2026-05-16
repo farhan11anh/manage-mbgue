@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, sql } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
-import { weeks, menuProposals, ingredients, votes, users } from '../db/schema';
+import { weeks, menuProposals, ingredients, votes, users, catalogIngredients } from '../db/schema';
 import { authMiddleware } from '../middleware/auth';
 
 type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } };
@@ -43,10 +43,25 @@ app.get('/:weekId/export', async (c) => {
   // Sheet 2: Daftar Bahan Makanan
   const sheet2Data = [];
   for (const menu of menus) {
-    const items = await db.select().from(ingredients).where(eq(ingredients.menuProposalId, menu.id)).all();
+    // Actual ingredients from ingredients table
+    const actualItems = await db.select().from(ingredients)
+      .where(sql`${ingredients.menuProposalId} = ${menu.id} AND ${ingredients.isActual} = 1`).all();
+
+    let items: Array<{ name: string; quantity: number; unit: string; pricePerUnit: number; totalPrice: number }>;
+
+    if (actualItems.length) {
+      items = actualItems;
+    } else if (menu.catalogMenuId) {
+      items = await db.select().from(catalogIngredients)
+        .where(eq(catalogIngredients.catalogMenuId, menu.catalogMenuId)).all();
+    } else {
+      items = await db.select().from(ingredients)
+        .where(sql`${ingredients.menuProposalId} = ${menu.id} AND ${ingredients.isActual} = 0`).all();
+    }
+
     for (const item of items) {
       sheet2Data.push({
-        'Menu': menu.menuName,
+        'Menu': menu.actualMenuName || menu.menuName,
         'Nama Bahan': item.name,
         'Jumlah': item.quantity,
         'Satuan': item.unit,
@@ -60,12 +75,26 @@ app.get('/:weekId/export', async (c) => {
   const sheet3Data = [];
   let grandTotal = 0;
   for (const menu of menus) {
-    const totalResult = await db.select({ total: sql<number>`COALESCE(SUM(${ingredients.totalPrice}), 0)` })
-      .from(ingredients).where(eq(ingredients.menuProposalId, menu.id)).get();
-    const total = totalResult?.total ?? 0;
+    let total = 0;
+
+    const actualTotal = await db.select({ total: sql<number>`COALESCE(SUM(${ingredients.totalPrice}), 0)` })
+      .from(ingredients).where(sql`${ingredients.menuProposalId} = ${menu.id} AND ${ingredients.isActual} = 1`).get();
+
+    if ((actualTotal?.total ?? 0) > 0) {
+      total = actualTotal?.total ?? 0;
+    } else if (menu.catalogMenuId) {
+      const catTotal = await db.select({ total: sql<number>`COALESCE(SUM(${catalogIngredients.totalPrice}), 0)` })
+        .from(catalogIngredients).where(eq(catalogIngredients.catalogMenuId, menu.catalogMenuId)).get();
+      total = catTotal?.total ?? 0;
+    } else {
+      const legacyTotal = await db.select({ total: sql<number>`COALESCE(SUM(${ingredients.totalPrice}), 0)` })
+        .from(ingredients).where(sql`${ingredients.menuProposalId} = ${menu.id} AND ${ingredients.isActual} = 0`).get();
+      total = legacyTotal?.total ?? 0;
+    }
+
     grandTotal += total;
     sheet3Data.push({
-      'Menu': menu.menuName,
+      'Menu': menu.actualMenuName || menu.menuName,
       'Total Harga Bahan': total,
     });
   }

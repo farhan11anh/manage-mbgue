@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import MenuProposalPage from './pages/MenuProposalPage';
+import MenuCatalogPage from './pages/MenuProposalPage';
 import MenuDetailPage from './pages/MenuDetailPage';
 import WeeklyPlanPage from './pages/WeeklyPlanPage';
 import RecapPage from './pages/RecapPage';
@@ -68,7 +68,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/" element={<ProtectedShell><DashboardPage /></ProtectedShell>} />
         <Route path="/week/:id" element={<ProtectedShell><WeeklyPlanPage /></ProtectedShell>} />
-        <Route path="/propose" element={<ProtectedShell><MenuProposalPage /></ProtectedShell>} />
+        <Route path="/catalog" element={<ProtectedShell><MenuCatalogPage /></ProtectedShell>} />
         <Route path="/menus/:id" element={<ProtectedShell><MenuDetailPage /></ProtectedShell>} />
         <Route path="/recap/:weekId" element={<ProtectedShell><RecapPage /></ProtectedShell>} />
         <Route path="/admin" element={<ProtectedShell adminOnly><AdminPage /></ProtectedShell>} />

@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, lte, gte, sql, inArray } from 'drizzle-orm';
-import { weeks, menuProposals, votes, ingredients } from '../db/schema';
+import { weeks, menuProposals, votes, ingredients, catalogIngredients } from '../db/schema';
 import { authMiddleware, AuthUser } from '../middleware/auth';
 
 type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } };
@@ -137,6 +137,7 @@ app.get('/:weekId/summary', async (c) => {
     meal: menuProposals.mealType,
     menuName: menuProposals.menuName,
     actualMenuName: menuProposals.actualMenuName,
+    catalogMenuId: menuProposals.catalogMenuId,
   }).from(menuProposals).where(eq(menuProposals.weekId, weekId)).all();
 
   const sortedMenus = [...allMenus].sort((a, b) => {
@@ -153,13 +154,30 @@ app.get('/:weekId/summary', async (c) => {
   const allIngredients = await db.select().from(ingredients)
     .where(inArray(ingredients.menuProposalId, menuIds)).all();
 
+  // Get catalog ingredients for catalog-linked menus
+  const catalogMenuIds = sortedMenus
+    .filter(m => m.catalogMenuId)
+    .map(m => m.catalogMenuId!);
+  const allCatalogIngredients = catalogMenuIds.length
+    ? await db.select().from(catalogIngredients)
+        .where(inArray(catalogIngredients.catalogMenuId, catalogMenuIds)).all()
+    : [];
+
   const ingredientMap = new Map<string, { name: string; totalQty: number; unit: string; totalPrice: number }>();
 
   for (const menu of sortedMenus) {
     const menuItems = allIngredients.filter((item) => item.menuProposalId === menu.id);
     const actualItems = menuItems.filter((item) => item.isActual === 1);
-    const proposalItems = menuItems.filter((item) => item.isActual === 0);
-    const chosenItems = actualItems.length ? actualItems : proposalItems;
+
+    let chosenItems: Array<{ name: string; quantity: number; unit: string; totalPrice: number }>;
+
+    if (actualItems.length) {
+      chosenItems = actualItems;
+    } else if (menu.catalogMenuId) {
+      chosenItems = allCatalogIngredients.filter(i => i.catalogMenuId === menu.catalogMenuId);
+    } else {
+      chosenItems = menuItems.filter((item) => item.isActual === 0);
+    }
 
     for (const item of chosenItems) {
       const key = `${item.name.toLowerCase()}::${item.unit.toLowerCase()}`;

@@ -26,7 +26,7 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center gap-6">
           <Link to="/" className="text-text-muted hover:text-primary transition-colors">Dashboard</Link>
-          <Link to="/propose" className="text-text-muted hover:text-primary transition-colors">Usulkan Menu</Link>
+          <Link to="/catalog" className="text-text-muted hover:text-primary transition-colors">Katalog Menu</Link>
           {user?.isAdmin ? <Link to="/admin" className="text-text-muted hover:text-primary transition-colors">Admin</Link> : null}
         </div>
 
@@ -92,7 +92,7 @@ export default function Navbar() {
             </div>
           </div>
           <Link to="/" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Dashboard</Link>
-          <Link to="/propose" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Usulkan Menu</Link>
+          <Link to="/catalog" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Katalog Menu</Link>
           <Link to="/change-password" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Ganti Password</Link>
           {user?.isAdmin ? <Link to="/admin" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Admin</Link> : null}
           <button onClick={handleLogout} className="block w-full text-left px-3 py-2 text-danger">Logout</button>

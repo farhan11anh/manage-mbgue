@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, WeekSummary } from '../lib/api';
+import { api, WeekSummary, CatalogMenu } from '../lib/api';
 import MenuCard from '../components/MenuCard';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -92,6 +92,118 @@ function WhatsAppModal({
   );
 }
 
+function AssignMenuModal({
+  isOpen,
+  day,
+  onClose,
+  onAssign,
+}: {
+  isOpen: boolean;
+  day: string;
+  onClose: () => void;
+  onAssign: (catalogMenuId: number, mealType: string, note?: string) => void;
+}) {
+  const [catalogMenus, setCatalogMenus] = useState<CatalogMenu[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [mealType, setMealType] = useState('Makan Siang');
+  const [note, setNote] = useState('');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getCatalogMenus().then(res => setCatalogMenus(res.menus)).catch(console.error);
+      setSelectedId(null);
+      setMealType('Makan Siang');
+      setNote('');
+      setSearch('');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const filtered = catalogMenus.filter(m =>
+    m.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleSubmit = () => {
+    if (!selectedId) return;
+    setLoading(true);
+    onAssign(selectedId, mealType, note || undefined);
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative glass-card w-full max-w-lg border border-white/15 p-6 shadow-2xl max-h-[80vh] flex flex-col">
+        <div className="mb-4 text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-2xl">🍽️</div>
+          <h3 className="font-heading text-xl font-bold">Tambah Menu - {day}</h3>
+          <p className="mt-1 text-sm text-text-muted">Pilih menu dari katalog</p>
+        </div>
+
+        <div className="mb-3">
+          <select className="input-field !py-2 text-sm" value={mealType} onChange={e => setMealType(e.target.value)}>
+            {MEAL_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+
+        <input
+          className="input-field !py-2 text-sm mb-3"
+          placeholder="🔍 Cari menu..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        <div className="flex-1 overflow-y-auto space-y-1.5 mb-3 min-h-0 max-h-[30vh]">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-text-muted text-center py-4">
+              {catalogMenus.length === 0 ? (
+                <>Belum ada menu di katalog. <a href="/catalog" className="text-primary">Tambahkan dulu →</a></>
+              ) : 'Tidak ada menu yang cocok'}
+            </p>
+          ) : (
+            filtered.map(m => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedId(m.id)}
+                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                  selectedId === m.id
+                    ? 'border-primary bg-primary/10'
+                    : 'border-white/5 hover:border-white/15 bg-white/5'
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-sm">{m.name}</span>
+                  <span className="text-xs text-accent">{formatRupiah(m.estimatedPrice || 0)}</span>
+                </div>
+                {m.description && <p className="text-xs text-text-muted mt-1 line-clamp-1">{m.description}</p>}
+                <span className="text-xs text-text-muted">{m.ingredientCount || 0} bahan</span>
+              </button>
+            ))
+          )}
+        </div>
+
+        <textarea
+          className="input-field resize-none text-sm mb-3"
+          rows={2}
+          placeholder="Catatan (opsional, misal: tanpa pedas)"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+        />
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1">Batal</button>
+          <button onClick={handleSubmit} disabled={!selectedId || loading} className="btn-primary flex-1">
+            {loading ? '...' : 'Tambahkan'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WeeklyPlanPage() {
   const { id } = useParams();
   const [week, setWeek] = useState<any>(null);
@@ -103,6 +215,7 @@ export default function WeeklyPlanPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [whatsAppError, setWhatsAppError] = useState('');
   const [whatsAppLoading, setWhatsAppLoading] = useState(false);
+  const [assignDay, setAssignDay] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -175,6 +288,17 @@ export default function WeeklyPlanPage() {
     }
   };
 
+  const handleAssignMenu = async (catalogMenuId: number, mealType: string, note?: string) => {
+    if (!assignDay) return;
+    try {
+      await api.createMenu(parseInt(id!), { catalogMenuId, dayOfWeek: assignDay, mealType, note });
+      setAssignDay(null);
+      loadData();
+    } catch (e: any) {
+      alert(e.message || 'Gagal menambahkan menu');
+    }
+  };
+
   if (!week) return <div className="text-center py-20 text-text-muted">Loading...</div>;
 
   return (
@@ -187,7 +311,7 @@ export default function WeeklyPlanPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to={`/propose?weekId=${id}`} className="btn-primary text-sm">+ Usulkan Menu</Link>
+          <Link to="/catalog" className="btn-primary text-sm">📖 Katalog Menu</Link>
           <button onClick={handleExport} className="btn-secondary text-sm">📊 Export Excel</button>
           <button onClick={handleOpenWhatsApp} className="btn-accent text-sm">📲 Kirim ke WhatsApp</button>
         </div>
@@ -209,7 +333,16 @@ export default function WeeklyPlanPage() {
           const dayMenus = filteredMenus.filter(m => m.dayOfWeek === day);
           return (
             <div key={day} className="glass-card p-4 flex flex-col">
-              <h3 className="font-heading font-bold text-primary mb-3">{day}</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-heading font-bold text-primary">{day}</h3>
+                <button
+                  onClick={() => setAssignDay(day)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-bold"
+                  title="Tambah menu dari katalog"
+                >
+                  +
+                </button>
+              </div>
               <div className="flex-1">
                 {dayMenus.length === 0 ? (
                   <p className="text-sm text-text-muted">Belum ada menu</p>
@@ -250,6 +383,13 @@ export default function WeeklyPlanPage() {
         onPhoneChange={setPhoneNumber}
         onClose={() => setWhatsAppOpen(false)}
         onSubmit={handleSendWhatsApp}
+      />
+
+      <AssignMenuModal
+        isOpen={!!assignDay}
+        day={assignDay || ''}
+        onClose={() => setAssignDay(null)}
+        onAssign={handleAssignMenu}
       />
     </div>
   );
