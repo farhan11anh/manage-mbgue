@@ -1,5 +1,35 @@
 const BASE = '/api';
 
+export interface ApiUser {
+  id: number;
+  username: string;
+  displayName: string;
+  isAdmin: number;
+  mustChangePassword: number;
+}
+
+export interface AdminUser extends ApiUser {
+  createdAt: string;
+  isApproved: number;
+}
+
+export interface WeekSummary {
+  weekLabel: string;
+  menus: Array<{
+    day: string;
+    meal: string;
+    menuName: string;
+    actualMenuName?: string | null;
+  }>;
+  ingredients: Array<{
+    name: string;
+    totalQty: number;
+    unit: string;
+    totalPrice: number;
+  }>;
+  grandTotal: number;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
@@ -11,11 +41,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    const error = await res.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
     throw new Error(error.error || 'Request failed');
   }
 
-  // Handle blob responses (Excel export)
   if (res.headers.get('Content-Type')?.includes('spreadsheetml')) {
     return res.blob() as unknown as T;
   }
@@ -26,13 +55,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Auth
   login: (data: { username: string; password: string }) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+    request<{ user: ApiUser }>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   register: (data: { username: string; password: string; displayName: string }) =>
-    request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
-  me: () => request<{ user: { id: number; username: string; displayName: string } }>('/auth/me'),
+    request<{ message: string }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
+  me: () => request<{ user: ApiUser }>('/auth/me'),
   updateProfile: (data: { displayName: string }) =>
-    request('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+    request<{ user: ApiUser }>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  changePassword: (data: { oldPassword?: string; newPassword: string }) =>
+    request<{ message: string; user: ApiUser }>('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Admin
+  getUsers: () => request<{ users: AdminUser[] }>('/admin/users'),
+  approveUser: (userId: number) => request<{ message: string }>(`/admin/approve/${userId}`, { method: 'POST' }),
+  rejectUser: (userId: number) => request<{ message: string }>(`/admin/reject/${userId}`, { method: 'POST' }),
+  resetPassword: (userId: number) => request<{ password: string }>(`/admin/reset-password/${userId}`, { method: 'POST' }),
+  toggleAdmin: (userId: number) => request<{ message: string; isAdmin: number }>(`/admin/toggle-admin/${userId}`, { method: 'POST' }),
 
   // Weeks
   getWeeks: () => request<{ weeks: any[] }>('/weeks'),
@@ -40,6 +78,7 @@ export const api = {
     request('/weeks', { method: 'POST', body: JSON.stringify(data) }),
   getWeek: (id: number) => request<{ week: any; menus: any[] }>(`/weeks/${id}`),
   getCurrentWeek: () => request<{ week: any }>('/weeks/current'),
+  getWeekSummary: (weekId: number) => request<WeekSummary>(`/weeks/${weekId}/summary`),
 
   // Menus
   getWeekMenus: (weekId: number) => request<{ menus: any[] }>(`/weeks/${weekId}/menus`),
@@ -83,11 +122,16 @@ export const api = {
   // Export
   exportWeek: async (weekId: number) => {
     const res = await fetch(`${BASE}/weeks/${weekId}/export`, { credentials: 'include' });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Export gagal' })) as { error?: string };
+      throw new Error(error.error || 'Export gagal');
+    }
+
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `MBG-Rekap.xlsx`;
+    a.download = 'MBG-Rekap.xlsx';
     a.click();
     URL.revokeObjectURL(url);
   },

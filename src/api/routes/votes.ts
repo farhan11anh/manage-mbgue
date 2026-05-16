@@ -14,8 +14,8 @@ app.use('*', authMiddleware);
 app.post('/:menuId/vote', zValidator('json', z.object({
   voteType: z.enum(['up', 'down']),
 })), async (c) => {
-  const menuId = parseInt(c.req.param('menuId'));
-  const user = c.get('user') as AuthUser;
+  const menuId = parseInt(c.req.param('menuId') ?? '0');
+  const user = (c as any).get('user') as AuthUser;
   const { voteType } = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
@@ -44,7 +44,7 @@ app.post('/:menuId/vote', zValidator('json', z.object({
 });
 
 app.get('/:menuId/votes', authMiddleware, async (c) => {
-  const menuId = parseInt(c.req.param('menuId'));
+  const menuId = parseInt(c.req.param('menuId') ?? '0');
   const db = drizzle(c.env.DB);
 
   const up = await db.select({ count: sql<number>`count(*)` }).from(votes)

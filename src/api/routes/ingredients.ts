@@ -13,7 +13,7 @@ export const menuIngredients = new Hono<Env>();
 menuIngredients.use('*', authMiddleware);
 
 menuIngredients.get('/', async (c) => {
-  const menuId = parseInt(c.req.param('menuId'));
+  const menuId = parseInt(c.req.param('menuId') ?? '0');
   const isActual = c.req.query('actual') === '1' ? 1 : 0;
   const db = drizzle(c.env.DB);
   const items = await db.select().from(ingredients)
@@ -30,7 +30,7 @@ const ingredientSchema = z.object({
 });
 
 menuIngredients.post('/', zValidator('json', ingredientSchema), async (c) => {
-  const menuId = parseInt(c.req.param('menuId'));
+  const menuId = parseInt(c.req.param('menuId') ?? '0');
   const body = c.req.valid('json');
   const db = drizzle(c.env.DB);
 

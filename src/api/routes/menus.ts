@@ -13,7 +13,7 @@ export const weekMenus = new Hono<Env>();
 weekMenus.use('*', authMiddleware);
 
 weekMenus.get('/', async (c) => {
-  const weekId = parseInt(c.req.param('weekId'));
+  const weekId = parseInt(c.req.param('weekId') ?? '0');
   const db = drizzle(c.env.DB);
   const menus = await db.select().from(menuProposals).where(eq(menuProposals.weekId, weekId)).all();
   return c.json({ menus });
@@ -27,8 +27,8 @@ const menuCreateSchema = z.object({
 });
 
 weekMenus.post('/', zValidator('json', menuCreateSchema), async (c) => {
-  const weekId = parseInt(c.req.param('weekId'));
-  const user = c.get('user') as AuthUser;
+  const weekId = parseInt(c.req.param('weekId') ?? '0');
+  const user = (c as any).get('user') as AuthUser;
   const body = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
@@ -110,7 +110,7 @@ app.patch('/:id', zValidator('json', z.object({
   mealType: z.enum(['Sarapan', 'Makan Siang', 'Makan Malam']).optional(),
 })), async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user') as AuthUser;
+  const user = (c as any).get('user') as AuthUser;
   const body = c.req.valid('json');
   const db = drizzle(c.env.DB);
 

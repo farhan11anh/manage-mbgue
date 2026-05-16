@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { hash, compare } from 'bcryptjs';
-import { setCookie, deleteCookie } from 'hono/cookie';
+import { deleteCookie } from 'hono/cookie';
 import { users } from '../db/schema';
-import { authMiddleware, createToken, AuthUser } from '../middleware/auth';
+import { authMiddleware, setAuthCookie, AuthUser } from '../middleware/auth';
 
 const app = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>();
 
@@ -21,6 +21,21 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
+const changePasswordSchema = z.object({
+  oldPassword: z.string().optional(),
+  newPassword: z.string().min(6),
+});
+
+function toAuthUser(user: typeof users.$inferSelect): AuthUser {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    isAdmin: user.isAdmin,
+    mustChangePassword: user.mustChangePassword,
+  };
+}
+
 app.post('/register', zValidator('json', registerSchema), async (c) => {
   const { username, password, displayName } = c.req.valid('json');
   const db = drizzle(c.env.DB);
@@ -31,27 +46,14 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
   }
 
   const hashedPassword = await hash(password, 10);
-  const result = await db.insert(users).values({
+  await db.insert(users).values({
     username,
     password: hashedPassword,
     displayName,
-  }).returning();
-
-  const user = result[0];
-  const token = await createToken(
-    { id: user.id, username: user.username, displayName: user.displayName },
-    c.env.JWT_SECRET || 'dev-secret-key'
-  );
-
-  setCookie(c, 'token', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/',
+    isApproved: 0,
   });
 
-  return c.json({ user: { id: user.id, username: user.username, displayName: user.displayName } });
+  return c.json({ message: 'Akun berhasil dibuat, menunggu persetujuan admin' }, 201);
 });
 
 app.post('/login', zValidator('json', loginSchema), async (c) => {
@@ -68,20 +70,14 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
     return c.json({ error: 'Username atau password salah' }, 401);
   }
 
-  const token = await createToken(
-    { id: user.id, username: user.username, displayName: user.displayName },
-    c.env.JWT_SECRET || 'dev-secret-key'
-  );
+  if (user.isApproved !== 1) {
+    return c.json({ error: 'Akun belum disetujui admin' }, 403);
+  }
 
-  setCookie(c, 'token', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/',
-  });
+  const authUser = toAuthUser(user);
+  await setAuthCookie(c, authUser);
 
-  return c.json({ user: { id: user.id, username: user.username, displayName: user.displayName } });
+  return c.json({ user: authUser });
 });
 
 app.post('/logout', (c) => {
@@ -90,18 +86,57 @@ app.post('/logout', (c) => {
 });
 
 app.get('/me', authMiddleware, (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = (c as any).get('user') as AuthUser;
   return c.json({ user });
 });
 
 app.patch('/profile', authMiddleware, zValidator('json', z.object({ displayName: z.string().min(1).max(100) })), async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = (c as any).get('user') as AuthUser;
   const { displayName } = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
-  await db.update(users).set({ displayName }).where(eq(users.id, user.id));
+  const result = await db.update(users)
+    .set({ displayName })
+    .where(eq(users.id, user.id))
+    .returning();
 
-  return c.json({ user: { ...user, displayName } });
+  const updatedUser = toAuthUser(result[0]);
+  await setAuthCookie(c, updatedUser);
+
+  return c.json({ user: updatedUser });
+});
+
+app.post('/change-password', authMiddleware, zValidator('json', changePasswordSchema), async (c) => {
+  const user = (c as any).get('user') as AuthUser;
+  const { oldPassword, newPassword } = c.req.valid('json');
+  const db = drizzle(c.env.DB);
+
+  const existing = await db.select().from(users).where(eq(users.id, user.id)).get();
+  if (!existing) {
+    return c.json({ error: 'User tidak ditemukan' }, 404);
+  }
+
+  if (!user.mustChangePassword) {
+    if (!oldPassword) {
+      return c.json({ error: 'Password lama wajib diisi' }, 400);
+    }
+
+    const valid = await compare(oldPassword, existing.password);
+    if (!valid) {
+      return c.json({ error: 'Password lama tidak sesuai' }, 400);
+    }
+  }
+
+  const hashedPassword = await hash(newPassword, 10);
+  const result = await db.update(users)
+    .set({ password: hashedPassword, mustChangePassword: 0 })
+    .where(eq(users.id, user.id))
+    .returning();
+
+  const updatedUser = toAuthUser(result[0]);
+  await setAuthCookie(c, updatedUser);
+
+  return c.json({ message: 'Password berhasil diubah', user: updatedUser });
 });
 
 export default app;

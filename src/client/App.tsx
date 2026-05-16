@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth } from './lib/auth';
 import Navbar from './components/Navbar';
@@ -9,12 +9,49 @@ import MenuProposalPage from './pages/MenuProposalPage';
 import MenuDetailPage from './pages/MenuDetailPage';
 import WeeklyPlanPage from './pages/WeeklyPlanPage';
 import RecapPage from './pages/RecapPage';
+import AdminPage from './pages/AdminPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+
+function LoadingScreen() {
+  return <div className="flex items-center justify-center h-screen"><div className="text-primary text-xl">Loading...</div></div>;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen"><div className="text-primary text-xl">Loading...</div></div>;
-  if (!user) return <Navigate to="/login" />;
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+function ForceChangePasswordRedirect({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user?.isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function ProtectedShell({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+  return (
+    <ProtectedRoute>
+      <ForceChangePasswordRedirect>
+        <Navbar />
+        {adminOnly ? <AdminRoute>{children}</AdminRoute> : children}
+      </ForceChangePasswordRedirect>
+    </ProtectedRoute>
+  );
 }
 
 export default function App() {
@@ -29,11 +66,13 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/" element={<ProtectedRoute><Navbar /><DashboardPage /></ProtectedRoute>} />
-        <Route path="/week/:id" element={<ProtectedRoute><Navbar /><WeeklyPlanPage /></ProtectedRoute>} />
-        <Route path="/propose" element={<ProtectedRoute><Navbar /><MenuProposalPage /></ProtectedRoute>} />
-        <Route path="/menus/:id" element={<ProtectedRoute><Navbar /><MenuDetailPage /></ProtectedRoute>} />
-        <Route path="/recap/:weekId" element={<ProtectedRoute><Navbar /><RecapPage /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedShell><DashboardPage /></ProtectedShell>} />
+        <Route path="/week/:id" element={<ProtectedShell><WeeklyPlanPage /></ProtectedShell>} />
+        <Route path="/propose" element={<ProtectedShell><MenuProposalPage /></ProtectedShell>} />
+        <Route path="/menus/:id" element={<ProtectedShell><MenuDetailPage /></ProtectedShell>} />
+        <Route path="/recap/:weekId" element={<ProtectedShell><RecapPage /></ProtectedShell>} />
+        <Route path="/admin" element={<ProtectedShell adminOnly><AdminPage /></ProtectedShell>} />
+        <Route path="/change-password" element={<ProtectedShell><ChangePasswordPage /></ProtectedShell>} />
       </Routes>
     </BrowserRouter>
   );

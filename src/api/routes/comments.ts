@@ -13,7 +13,7 @@ export const menuComments = new Hono<Env>();
 menuComments.use('*', authMiddleware);
 
 menuComments.get('/', async (c) => {
-  const menuId = parseInt(c.req.param('menuId'));
+  const menuId = parseInt(c.req.param('menuId') ?? '0');
   const db = drizzle(c.env.DB);
 
   const allComments = await db
@@ -55,8 +55,8 @@ menuComments.get('/', async (c) => {
 menuComments.post('/', zValidator('json', z.object({
   content: z.string().min(1),
 })), async (c) => {
-  const menuId = parseInt(c.req.param('menuId'));
-  const user = c.get('user') as AuthUser;
+  const menuId = parseInt(c.req.param('menuId') ?? '0');
+  const user = (c as any).get('user') as AuthUser;
   const { content } = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
@@ -77,7 +77,7 @@ app.post('/:id/reply', zValidator('json', z.object({
   content: z.string().min(1),
 })), async (c) => {
   const parentId = parseInt(c.req.param('id'));
-  const user = c.get('user') as AuthUser;
+  const user = (c as any).get('user') as AuthUser;
   const { content } = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
@@ -98,7 +98,7 @@ app.patch('/:id', zValidator('json', z.object({
   content: z.string().min(1),
 })), async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user') as AuthUser;
+  const user = (c as any).get('user') as AuthUser;
   const { content } = c.req.valid('json');
   const db = drizzle(c.env.DB);
 
@@ -117,7 +117,7 @@ app.patch('/:id', zValidator('json', z.object({
 
 app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user') as AuthUser;
+  const user = (c as any).get('user') as AuthUser;
   const db = drizzle(c.env.DB);
 
   const comment = await db.select().from(comments).where(eq(comments.id, id)).get();

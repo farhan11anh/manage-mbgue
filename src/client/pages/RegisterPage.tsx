@@ -16,8 +16,8 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await register(username, password, displayName);
-      navigate('/');
+      const message = await register(username, password, displayName);
+      navigate('/login', { state: { successMessage: message } });
     } catch (err: any) {
       setError(err.message || 'Registrasi gagal');
     } finally {

@@ -8,6 +8,7 @@ import ingredientRoutes, { menuIngredients } from './routes/ingredients';
 import voteRoutes from './routes/votes';
 import commentRoutes, { menuComments } from './routes/comments';
 import exportRoutes from './routes/export';
+import adminRoutes from './routes/admin';
 
 type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } };
 
@@ -15,6 +16,7 @@ const app = new Hono<Env>();
 
 // API routes
 app.route('/api/auth', authRoutes);
+app.route('/api/admin', adminRoutes);
 app.route('/api/weeks', weekRoutes);
 app.route('/api/weeks/:weekId/menus', weekMenus);
 app.route('/api/weeks', exportRoutes);

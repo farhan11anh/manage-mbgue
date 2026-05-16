@@ -1,0 +1,5 @@
+ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0;
+UPDATE users SET is_approved = 1;
+UPDATE users SET is_admin = 1 WHERE id = (SELECT MIN(id) FROM users);
