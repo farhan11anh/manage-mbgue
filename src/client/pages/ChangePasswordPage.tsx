@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import PasswordInput from '../components/PasswordInput';
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -63,37 +64,34 @@ export default function ChangePasswordPage() {
           {!isForcedChange && (
             <div>
               <label className="text-sm text-text-muted mb-1 block">Password Lama</label>
-              <input
-                className="input-field"
-                type="password"
+              <PasswordInput
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
                 required={!isForcedChange}
+                autoComplete="current-password"
               />
             </div>
           )}
 
           <div>
             <label className="text-sm text-text-muted mb-1 block">Password Baru</label>
-            <input
-              className="input-field"
-              type="password"
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               minLength={6}
               required
+              autoComplete="new-password"
             />
           </div>
 
           <div>
             <label className="text-sm text-text-muted mb-1 block">Konfirmasi Password Baru</label>
-            <input
-              className="input-field"
-              type="password"
+            <PasswordInput
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               minLength={6}
               required
+              autoComplete="new-password"
             />
           </div>
 

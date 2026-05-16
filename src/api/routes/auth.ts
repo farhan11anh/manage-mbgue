@@ -37,7 +37,8 @@ function toAuthUser(user: typeof users.$inferSelect): AuthUser {
 }
 
 app.post('/register', zValidator('json', registerSchema), async (c) => {
-  const { username, password, displayName } = c.req.valid('json');
+  const { password, displayName } = c.req.valid('json');
+  const username = c.req.valid('json').username.toLowerCase();
   const db = drizzle(c.env.DB);
 
   const existing = await db.select().from(users).where(eq(users.username, username)).get();
@@ -57,7 +58,8 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
 });
 
 app.post('/login', zValidator('json', loginSchema), async (c) => {
-  const { username, password } = c.req.valid('json');
+  const { password } = c.req.valid('json');
+  const username = c.req.valid('json').username.toLowerCase();
   const db = drizzle(c.env.DB);
 
   const user = await db.select().from(users).where(eq(users.username, username)).get();

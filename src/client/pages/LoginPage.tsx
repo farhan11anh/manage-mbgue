@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import PasswordInput from '../components/PasswordInput';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -17,7 +18,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
+      await login(username.toLowerCase(), password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Login gagal');
@@ -41,11 +42,11 @@ export default function LoginPage() {
           {successMessage && <p className="rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">{successMessage}</p>}
           <div>
             <label className="text-sm text-text-muted mb-1 block">Username</label>
-            <input className="input-field" value={username} onChange={e => setUsername(e.target.value)} required />
+            <input className="input-field lowercase" value={username} onChange={e => setUsername(e.target.value.toLowerCase())} required autoComplete="username" />
           </div>
           <div>
             <label className="text-sm text-text-muted mb-1 block">Password</label>
-            <input className="input-field" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+            <PasswordInput value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           {error && <p className="text-danger text-sm">{error}</p>}
           <button type="submit" disabled={loading} className="btn-primary w-full">

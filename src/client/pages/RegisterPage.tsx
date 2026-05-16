@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import PasswordInput from '../components/PasswordInput';
 
 export default function RegisterPage() {
   const [username, setUsername] = useState('');
@@ -16,7 +17,7 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      const message = await register(username, password, displayName);
+      const message = await register(username.toLowerCase(), password, displayName);
       navigate('/login', { state: { successMessage: message } });
     } catch (err: any) {
       setError(err.message || 'Registrasi gagal');
@@ -43,11 +44,11 @@ export default function RegisterPage() {
           </div>
           <div>
             <label className="text-sm text-text-muted mb-1 block">Username</label>
-            <input className="input-field" value={username} onChange={e => setUsername(e.target.value)} required />
+            <input className="input-field lowercase" value={username} onChange={e => setUsername(e.target.value.toLowerCase())} required autoComplete="username" />
           </div>
           <div>
             <label className="text-sm text-text-muted mb-1 block">Password (min. 6 karakter)</label>
-            <input className="input-field" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required />
+            <PasswordInput value={password} onChange={e => setPassword(e.target.value)} minLength={6} required autoComplete="new-password" />
           </div>
           {error && <p className="text-danger text-sm">{error}</p>}
           <button type="submit" disabled={loading} className="btn-primary w-full">
