@@ -62,6 +62,8 @@ export const api = {
   me: () => request<{ user: ApiUser }>('/auth/me'),
   updateProfile: (data: { displayName: string }) =>
     request<{ user: ApiUser }>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  updateAvatar: (avatarUrl: string) =>
+    request<{ user: ApiUser }>('/auth/avatar', { method: 'PATCH', body: JSON.stringify({ avatarUrl }) }),
   changePassword: (data: { oldPassword?: string; newPassword: string }) =>
     request<{ message: string; user: ApiUser }>('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 

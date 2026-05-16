@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
+import Avatar from './Avatar';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -34,19 +35,25 @@ export default function Navbar() {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 hover:text-primary transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center text-sm font-bold text-bg-dark">
-              {user?.displayName?.charAt(0).toUpperCase()}
-            </div>
+            <Avatar size="sm" />
             <span className="text-sm">{user?.displayName}</span>
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 glass-card p-2 min-w-[190px] border border-white/10 rounded-xl">
+            <div className="absolute right-0 top-full mt-2 glass-card p-2 min-w-[200px] border border-white/10 rounded-xl">
+              {/* Avatar edit section */}
+              <div className="flex items-center gap-3 px-3 py-3 border-b border-white/10 mb-1">
+                <Avatar size="md" editable />
+                <div>
+                  <p className="text-sm font-semibold">{user?.displayName}</p>
+                  <p className="text-xs text-text-muted">@{user?.username}</p>
+                </div>
+              </div>
               <Link
                 to="/change-password"
                 onClick={() => setDropdownOpen(false)}
                 className="block w-full text-left px-3 py-2 text-sm text-text-main hover:bg-white/5 rounded-lg transition-colors"
               >
-                Ganti Password
+                🔑 Ganti Password
               </Link>
               {user?.isAdmin ? (
                 <Link
@@ -54,14 +61,14 @@ export default function Navbar() {
                   onClick={() => setDropdownOpen(false)}
                   className="block w-full text-left px-3 py-2 text-sm text-text-main hover:bg-white/5 rounded-lg transition-colors"
                 >
-                  Admin Dashboard
+                  🛡️ Admin Dashboard
                 </Link>
               ) : null}
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-3 py-2 text-sm text-danger hover:bg-white/5 rounded-lg transition-colors"
               >
-                Logout
+                🚪 Logout
               </button>
             </div>
           )}
@@ -78,6 +85,14 @@ export default function Navbar() {
 
       {menuOpen && (
         <div className="md:hidden mt-3 space-y-2 pb-3">
+          {/* Mobile avatar */}
+          <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 mb-2">
+            <Avatar size="md" editable />
+            <div>
+              <p className="text-sm font-semibold">{user?.displayName}</p>
+              <p className="text-xs text-text-muted">Tap foto untuk ganti</p>
+            </div>
+          </div>
           <Link to="/" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Dashboard</Link>
           <Link to="/propose" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Usulkan Menu</Link>
           <Link to="/change-password" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Ganti Password</Link>
