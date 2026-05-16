@@ -93,8 +93,8 @@ function CatalogIngredientRow({ ing, onUpdate, onDelete }: { ing: CatalogIngredi
   );
 }
 
-function CatalogMenuCard({ menu, onUpdate }: { menu: CatalogMenu; onUpdate: () => void }) {
-  const [expanded, setExpanded] = useState(false);
+function CatalogMenuCard({ menu, onUpdate, autoExpand }: { menu: CatalogMenu; onUpdate: () => void; autoExpand?: boolean }) {
+  const [expanded, setExpanded] = useState(!!autoExpand);
   const [detail, setDetail] = useState<CatalogMenu | null>(null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(menu.name);
@@ -111,6 +111,11 @@ function CatalogMenuCard({ menu, onUpdate }: { menu: CatalogMenu; onUpdate: () =
       console.error(e);
     }
   };
+
+  // Auto-expand: load detail on mount if autoExpand
+  useEffect(() => {
+    if (autoExpand) loadDetail();
+  }, [autoExpand]);
 
   const handleExpand = () => {
     if (!expanded) loadDetail();
@@ -144,10 +149,20 @@ function CatalogMenuCard({ menu, onUpdate }: { menu: CatalogMenu; onUpdate: () =
     try {
       await api.deleteCatalogIngredient(ingId);
       loadDetail();
+      onUpdate();
     } catch (err: any) {
       alert(err.message);
     }
   };
+
+  const handleIngredientChange = () => {
+    loadDetail();
+    onUpdate();
+  };
+
+  // Use detail price when available (live), fallback to list price
+  const displayPrice = detail?.estimatedPrice ?? menu.estimatedPrice ?? 0;
+  const displayIngCount = detail?.ingredients?.length ?? menu.ingredientCount ?? 0;
 
   return (
     <>
@@ -156,11 +171,11 @@ function CatalogMenuCard({ menu, onUpdate }: { menu: CatalogMenu; onUpdate: () =
           <button onClick={handleExpand} className="flex-1 text-left">
             <div className="flex items-center gap-2">
               <h3 className="font-heading font-bold text-lg">{menu.name}</h3>
-              <span className="text-xs text-text-muted">({menu.ingredientCount || 0} bahan)</span>
+              <span className="text-xs text-text-muted">({displayIngCount} bahan)</span>
             </div>
             {menu.description && <p className="text-sm text-text-muted mt-1 line-clamp-2">{menu.description}</p>}
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-xs text-accent font-semibold">{formatRupiah(menu.estimatedPrice || 0)}</span>
+              <span className="text-xs text-accent font-semibold">{formatRupiah(displayPrice)}</span>
               <span className="text-xs text-text-muted">oleh {menu.creatorName}</span>
             </div>
           </button>
@@ -207,7 +222,7 @@ function CatalogMenuCard({ menu, onUpdate }: { menu: CatalogMenu; onUpdate: () =
                   </thead>
                   <tbody>
                     {detail.ingredients.map(ing => (
-                      <CatalogIngredientRow key={ing.id} ing={ing} onUpdate={loadDetail} onDelete={() => handleDeleteIngredient(ing.id)} />
+                      <CatalogIngredientRow key={ing.id} ing={ing} onUpdate={handleIngredientChange} onDelete={() => handleDeleteIngredient(ing.id)} />
                     ))}
                     <tr className="border-t border-white/10">
                       <td colSpan={4} className="py-2 text-sm font-semibold text-right">Total Estimasi</td>
@@ -221,7 +236,7 @@ function CatalogMenuCard({ menu, onUpdate }: { menu: CatalogMenu; onUpdate: () =
               <p className="text-sm text-text-muted">Belum ada bahan</p>
             )}
 
-            <IngredientForm catalogMenuId={menu.id} onAdded={loadDetail} />
+            <IngredientForm catalogMenuId={menu.id} onAdded={handleIngredientChange} />
           </div>
         )}
       </div>
@@ -250,6 +265,7 @@ export default function MenuCatalogPage() {
   const [newRecipe, setNewRecipe] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [newlyCreatedId, setNewlyCreatedId] = useState<number | null>(null);
 
   const loadMenus = async () => {
     try {
@@ -268,9 +284,10 @@ export default function MenuCatalogPage() {
     setCreating(true);
     setError('');
     try {
-      await api.createCatalogMenu({ name: newName.trim(), description: newDesc || undefined, recipe: newRecipe || undefined });
+      const res = await api.createCatalogMenu({ name: newName.trim(), description: newDesc || undefined, recipe: newRecipe || undefined });
       setNewName(''); setNewDesc(''); setNewRecipe('');
       setShowForm(false);
+      setNewlyCreatedId(res.menu.id);
       loadMenus();
     } catch (err: any) {
       setError(err.message);
@@ -324,7 +341,14 @@ export default function MenuCatalogPage() {
             {search ? 'Tidak ada menu yang cocok' : 'Belum ada menu di katalog. Tambahkan menu pertama!'}
           </div>
         ) : (
-          filtered.map(m => <CatalogMenuCard key={m.id} menu={m} onUpdate={loadMenus} />)
+          filtered.map(m => (
+            <CatalogMenuCard
+              key={m.id}
+              menu={m}
+              onUpdate={loadMenus}
+              autoExpand={m.id === newlyCreatedId}
+            />
+          ))
         )}
       </div>
     </div>
