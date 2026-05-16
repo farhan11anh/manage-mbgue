@@ -11,6 +11,7 @@ export interface ApiUser {
 export interface AdminUser extends ApiUser {
   createdAt: string;
   isApproved: number;
+  avatarUrl?: string | null;
 }
 
 export interface WeekSummary {

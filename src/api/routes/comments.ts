@@ -29,6 +29,7 @@ menuComments.get('/', async (c) => {
       updatedAt: comments.updatedAt,
       displayName: users.displayName,
       username: users.username,
+      avatarUrl: users.avatarUrl,
     })
     .from(comments)
     .leftJoin(users, eq(comments.userId, users.id))

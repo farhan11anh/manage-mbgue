@@ -8,6 +8,7 @@ interface Comment {
   content: string;
   displayName: string;
   username: string;
+  avatarUrl?: string | null;
   isEdited: number;
   deletedAt: string | null;
   createdAt: string;
@@ -32,11 +33,37 @@ function timeAgo(dateStr: string): string {
   return `${days} hari lalu`;
 }
 
-function getAvatarColor(name: string): string {
-  const colors = ['from-primary to-cyan-300', 'from-accent to-purple-300', 'from-secondary to-orange-300', 'from-success to-emerald-300', 'from-pink-500 to-rose-300'];
+const GRADIENTS = [
+  'from-emerald-400 to-cyan-500',
+  'from-violet-500 to-purple-600',
+  'from-rose-400 to-pink-600',
+  'from-amber-400 to-orange-500',
+  'from-sky-400 to-blue-600',
+  'from-lime-400 to-green-600',
+  'from-fuchsia-400 to-pink-500',
+  'from-teal-400 to-emerald-500',
+  'from-indigo-400 to-violet-500',
+  'from-red-400 to-rose-500',
+];
+
+function getGradient(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
+  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+}
+
+function UserAvatar({ name, url, size = 'sm' }: { name: string; url?: string | null; size?: 'sm' | 'md' }) {
+  const sizeClass = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm';
+  if (url) {
+    return <img src={url} alt={name} className={`${sizeClass} rounded-full object-cover border-2 border-primary/30 shrink-0`} />;
+  }
+  const gradient = getGradient(name);
+  const initial = name.charAt(0).toUpperCase();
+  return (
+    <div className={`${sizeClass} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center font-bold text-white shrink-0 select-none`}>
+      {initial}
+    </div>
+  );
 }
 
 function CommentBubble({ comment, menuId, onUpdate, isReply = false }: { comment: Comment; menuId: number; onUpdate: () => void; isReply?: boolean }) {
@@ -71,9 +98,7 @@ function CommentBubble({ comment, menuId, onUpdate, isReply = false }: { comment
   return (
     <div className={`${isReply ? 'ml-8 border-l-2 border-primary/30 pl-4' : ''}`}>
       <div className="flex gap-3 mb-3">
-        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${getAvatarColor(comment.displayName || '')} flex items-center justify-center text-xs font-bold text-bg-dark shrink-0`}>
-          {comment.displayName?.charAt(0).toUpperCase() || '?'}
-        </div>
+        <UserAvatar name={comment.displayName || '?'} url={comment.avatarUrl} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-semibold text-sm">{comment.displayName}</span>

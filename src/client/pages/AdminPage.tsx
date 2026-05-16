@@ -3,6 +3,38 @@ import ConfirmModal from '../components/ConfirmModal';
 import { api, AdminUser } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
+const GRADIENTS = [
+  'from-emerald-400 to-cyan-500',
+  'from-violet-500 to-purple-600',
+  'from-rose-400 to-pink-600',
+  'from-amber-400 to-orange-500',
+  'from-sky-400 to-blue-600',
+  'from-lime-400 to-green-600',
+  'from-fuchsia-400 to-pink-500',
+  'from-teal-400 to-emerald-500',
+  'from-indigo-400 to-violet-500',
+  'from-red-400 to-rose-500',
+];
+
+function getGradient(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+}
+
+function UserAvatar({ name, url }: { name: string; url?: string | null }) {
+  if (url) {
+    return <img src={url} alt={name} className="w-9 h-9 rounded-full object-cover border-2 border-primary/30 shrink-0" />;
+  }
+  const gradient = getGradient(name);
+  const initial = name.charAt(0).toUpperCase();
+  return (
+    <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center font-bold text-white shrink-0 select-none text-sm`}>
+      {initial}
+    </div>
+  );
+}
+
 function PasswordResultModal({
   isOpen,
   username,
@@ -196,12 +228,17 @@ export default function AdminPage() {
                 return (
                   <tr key={item.id} className="border-b border-white/5 align-top">
                     <td className="px-3 py-4">
-                      <div className="font-semibold text-text-main">
-                        {item.displayName}
-                        {isSelf ? <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Anda</span> : null}
+                      <div className="flex items-center gap-3">
+                        <UserAvatar name={item.displayName} url={item.avatarUrl} />
+                        <div>
+                          <div className="font-semibold text-text-main">
+                            {item.displayName}
+                            {isSelf ? <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Anda</span> : null}
+                          </div>
+                          <div className="text-xs text-text-muted">@{item.username}</div>
+                          <div className="mt-0.5 text-xs text-text-muted">Bergabung {new Date(item.createdAt).toLocaleDateString('id-ID')}</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-text-muted">@{item.username}</div>
-                      <div className="mt-1 text-xs text-text-muted">Bergabung {new Date(item.createdAt).toLocaleDateString('id-ID')}</div>
                     </td>
                     <td className="px-3 py-4">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isApproved ? 'bg-success/15 text-success border border-success/25' : 'bg-secondary/15 text-secondary border border-secondary/25'}`}>
