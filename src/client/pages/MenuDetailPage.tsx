@@ -161,11 +161,25 @@ export default function MenuDetailPage() {
             )}
           </div>
         )}
+
+        {/* Bahan Menu Sebenarnya */}
+        {menu.actualMenuName && (
+          <div className="mt-5 pt-4 border-t border-white/10">
+            <h4 className="font-heading font-semibold text-sm mb-3 text-success">📦 Bahan Menu Sebenarnya</h4>
+            <IngredientTable
+              menuId={menuId}
+              ingredients={menu.actualIngredients || []}
+              editable
+              isActual
+              onUpdate={loadMenu}
+            />
+          </div>
+        )}
       </div>
 
       {/* Ingredients */}
       <div className="glass-card p-6">
-        <h3 className="font-heading font-bold text-lg mb-4">🥬 Bahan Makanan</h3>
+        <h3 className="font-heading font-bold text-lg mb-4">🥬 Bahan Makanan (Usulan)</h3>
         <IngredientTable
           menuId={menuId}
           ingredients={menu.ingredients}

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { ingredients } from '../db/schema';
 import { authMiddleware } from '../middleware/auth';
 
@@ -14,8 +14,10 @@ menuIngredients.use('*', authMiddleware);
 
 menuIngredients.get('/', async (c) => {
   const menuId = parseInt(c.req.param('menuId'));
+  const isActual = c.req.query('actual') === '1' ? 1 : 0;
   const db = drizzle(c.env.DB);
-  const items = await db.select().from(ingredients).where(eq(ingredients.menuProposalId, menuId)).all();
+  const items = await db.select().from(ingredients)
+    .where(sql`${ingredients.menuProposalId} = ${menuId} AND ${ingredients.isActual} = ${isActual}`).all();
   return c.json({ ingredients: items });
 });
 
@@ -24,6 +26,7 @@ const ingredientSchema = z.object({
   quantity: z.number().positive(),
   unit: z.string().min(1),
   pricePerUnit: z.number().min(0),
+  isActual: z.number().optional(),
 });
 
 menuIngredients.post('/', zValidator('json', ingredientSchema), async (c) => {
@@ -34,7 +37,11 @@ menuIngredients.post('/', zValidator('json', ingredientSchema), async (c) => {
   const totalPrice = body.quantity * body.pricePerUnit;
   const result = await db.insert(ingredients).values({
     menuProposalId: menuId,
-    ...body,
+    name: body.name,
+    quantity: body.quantity,
+    unit: body.unit,
+    pricePerUnit: body.pricePerUnit,
+    isActual: body.isActual ?? 0,
     totalPrice,
   }).returning();
 

@@ -54,7 +54,10 @@ app.get('/:id', async (c) => {
 
   const week = await db.select().from(weeks).where(eq(weeks.id, menu.weekId)).get();
   const proposer = await db.select({ displayName: users.displayName }).from(users).where(eq(users.id, menu.proposedBy)).get();
-  const menuIngredients = await db.select().from(ingredients).where(eq(ingredients.menuProposalId, id)).all();
+  const menuIngredients = await db.select().from(ingredients)
+    .where(sql`${ingredients.menuProposalId} = ${id} AND ${ingredients.isActual} = 0`).all();
+  const actualIngredients = await db.select().from(ingredients)
+    .where(sql`${ingredients.menuProposalId} = ${id} AND ${ingredients.isActual} = 1`).all();
 
   const upVotes = await db.select({ count: sql<number>`count(*)` }).from(votes)
     .where(sql`${votes.menuProposalId} = ${id} AND ${votes.voteType} = 'up'`).get();
@@ -74,6 +77,7 @@ app.get('/:id', async (c) => {
       ...menu,
       proposerName: proposer?.displayName,
       ingredients: menuIngredients,
+      actualIngredients,
       votes: { up: upVotes?.count ?? 0, down: downVotes?.count ?? 0 },
       commentCount: commentCount?.count ?? 0,
       isLateProposal,

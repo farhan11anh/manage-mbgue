@@ -14,19 +14,21 @@ interface Props {
   menuId: number;
   ingredients: Ingredient[];
   editable?: boolean;
+  isActual?: boolean;
   onUpdate: () => void;
 }
 
 const formatRupiah = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
-export default function IngredientTable({ menuId, ingredients, editable = false, onUpdate }: Props) {
+export default function IngredientTable({ menuId, ingredients, editable = false, isActual = false, onUpdate }: Props) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', quantity: '', unit: '', pricePerUnit: '' });
 
   const handleAdd = async () => {
     try {
-      await api.addIngredient(menuId, {
+      const addFn = isActual ? api.addActualIngredient : api.addIngredient;
+      await addFn(menuId, {
         name: form.name,
         quantity: parseFloat(form.quantity),
         unit: form.unit,

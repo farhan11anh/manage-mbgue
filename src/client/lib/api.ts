@@ -58,6 +58,8 @@ export const api = {
   getIngredients: (menuId: number) => request<{ ingredients: any[] }>(`/menus/${menuId}/ingredients`),
   addIngredient: (menuId: number, data: any) =>
     request(`/menus/${menuId}/ingredients`, { method: 'POST', body: JSON.stringify(data) }),
+  addActualIngredient: (menuId: number, data: any) =>
+    request(`/menus/${menuId}/ingredients`, { method: 'POST', body: JSON.stringify({ ...data, isActual: 1 }) }),
   updateIngredient: (id: number, data: any) =>
     request(`/ingredients/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteIngredient: (id: number) => request(`/ingredients/${id}`, { method: 'DELETE' }),

@@ -38,6 +38,7 @@ export const ingredients = sqliteTable('ingredients', {
   unit: text('unit').notNull(),
   pricePerUnit: real('price_per_unit').notNull(),
   totalPrice: real('total_price').notNull(),
+  isActual: integer('is_actual').notNull().default(0), // 0 = bahan usulan, 1 = bahan menu sebenarnya
 });
 
 export const votes = sqliteTable('votes', {
