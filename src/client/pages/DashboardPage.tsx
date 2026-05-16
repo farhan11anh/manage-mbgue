@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [createWeekError, setCreateWeekError] = useState('');
 
   useEffect(() => {
     loadWeeks();
@@ -25,7 +26,17 @@ export default function DashboardPage() {
   };
 
   const handleCreateWeek = async () => {
-    if (!startDate || !endDate) return;
+    if (!startDate || !endDate) {
+      setCreateWeekError('Tanggal mulai dan akhir wajib diisi');
+      return;
+    }
+
+    if (endDate <= startDate) {
+      setCreateWeekError('Tanggal akhir harus setelah tanggal mulai');
+      return;
+    }
+
+    setCreateWeekError('');
     try {
       await api.createWeek({ startDate, endDate });
       setCreating(false);
@@ -48,8 +59,8 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3 mb-8">
-        <button onClick={() => navigate('/propose')} className="btn-primary">🍳 Usulkan Menu</button>
-        <button onClick={() => setCreating(!creating)} className="btn-accent">📅 Buat Minggu Baru</button>
+        <button onClick={() => navigate('/catalog')} className="btn-primary">📖 Katalog Menu</button>
+        <button onClick={() => { setCreating(!creating); setCreateWeekError(''); }} className="btn-accent">📅 Buat Minggu Baru</button>
       </div>
 
       {creating && (
@@ -58,16 +69,17 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm text-text-muted mb-1 block">Tanggal Mulai</label>
-              <input type="date" className="input-field" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <input type="date" className="input-field" value={startDate} onChange={e => { setStartDate(e.target.value); setCreateWeekError(''); }} />
             </div>
             <div>
               <label className="text-sm text-text-muted mb-1 block">Tanggal Akhir</label>
-              <input type="date" className="input-field" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              <input type="date" className="input-field" value={endDate} onChange={e => { setEndDate(e.target.value); setCreateWeekError(''); }} />
             </div>
             <div className="flex items-end">
               <button onClick={handleCreateWeek} className="btn-primary">Simpan</button>
             </div>
           </div>
+          {createWeekError && <p className="text-danger text-sm mt-2">{createWeekError}</p>}
         </div>
       )}
 

@@ -4,6 +4,24 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const formatRupiah = (v: number) => `Rp ${new Intl.NumberFormat('id-ID').format(v)}`;
 
+interface LocalIngredient {
+  id: string;
+  name: string;
+  quantity: string;
+  unit: string;
+  pricePerUnit: string;
+}
+
+const createLocalIngredient = (): LocalIngredient => ({
+  id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  name: '',
+  quantity: '',
+  unit: '',
+  pricePerUnit: '',
+});
+
 function IngredientForm({ catalogMenuId, onAdded }: { catalogMenuId: number; onAdded: () => void }) {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -263,8 +281,10 @@ export default function MenuCatalogPage() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newRecipe, setNewRecipe] = useState('');
+  const [localIngredients, setLocalIngredients] = useState<LocalIngredient[]>(() => [createLocalIngredient()]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [formErrors, setFormErrors] = useState({ name: '', ingredients: '' });
   const [newlyCreatedId, setNewlyCreatedId] = useState<number | null>(null);
 
   const loadMenus = async () => {
@@ -278,19 +298,97 @@ export default function MenuCatalogPage() {
 
   useEffect(() => { loadMenus(); }, []);
 
+  const resetCreateForm = () => {
+    setNewName('');
+    setNewDesc('');
+    setNewRecipe('');
+    setLocalIngredients([createLocalIngredient()]);
+    setFormErrors({ name: '', ingredients: '' });
+    setError('');
+  };
+
+  const handleIngredientChange = (id: string, field: keyof Omit<LocalIngredient, 'id'>, value: string) => {
+    setLocalIngredients(prev => prev.map(ingredient => (
+      ingredient.id === id ? { ...ingredient, [field]: value } : ingredient
+    )));
+    setFormErrors(prev => ({ ...prev, ingredients: '' }));
+    setError('');
+  };
+
+  const handleAddIngredientRow = () => {
+    setLocalIngredients(prev => [...prev, createLocalIngredient()]);
+    setFormErrors(prev => ({ ...prev, ingredients: '' }));
+  };
+
+  const handleRemoveIngredientRow = (id: string) => {
+    setLocalIngredients(prev => prev.filter(ingredient => ingredient.id !== id));
+    setFormErrors(prev => ({ ...prev, ingredients: '' }));
+    setError('');
+  };
+
+  const handleToggleForm = () => {
+    if (showForm) {
+      resetCreateForm();
+    }
+    setShowForm(!showForm);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
-    setCreating(true);
+
+    const trimmedName = newName.trim();
+    const normalizedIngredients = localIngredients.map(ingredient => ({
+      ...ingredient,
+      name: ingredient.name.trim(),
+      quantity: ingredient.quantity.trim(),
+      unit: ingredient.unit.trim(),
+      pricePerUnit: ingredient.pricePerUnit.trim(),
+    }));
+    const validIngredients = normalizedIngredients.filter(ingredient => ingredient.name && ingredient.quantity && ingredient.unit);
+    const hasIncompleteIngredient = normalizedIngredients.some(ingredient => (
+      ingredient.name || ingredient.quantity || ingredient.unit || ingredient.pricePerUnit
+    ) && !(ingredient.name && ingredient.quantity && ingredient.unit));
+
+    const nextErrors = { name: '', ingredients: '' };
+
+    if (!trimmedName) {
+      nextErrors.name = 'Nama menu wajib diisi';
+    }
+
+    if (hasIncompleteIngredient) {
+      nextErrors.ingredients = 'Lengkapi data bahan (nama, jumlah, satuan)';
+    } else if (validIngredients.length === 0) {
+      nextErrors.ingredients = 'Minimal 1 bahan harus diisi';
+    }
+
+    setFormErrors(nextErrors);
     setError('');
+
+    if (nextErrors.name || nextErrors.ingredients) {
+      return;
+    }
+
+    setCreating(true);
     try {
-      const res = await api.createCatalogMenu({ name: newName.trim(), description: newDesc || undefined, recipe: newRecipe || undefined });
-      setNewName(''); setNewDesc(''); setNewRecipe('');
+      const res = await api.createCatalogMenu({
+        name: trimmedName,
+        description: newDesc.trim() || undefined,
+        recipe: newRecipe.trim() || undefined,
+      });
+
+      await Promise.all(validIngredients.map(ingredient => api.addCatalogIngredient(res.menu.id, {
+        name: ingredient.name,
+        quantity: parseFloat(ingredient.quantity),
+        unit: ingredient.unit,
+        pricePerUnit: parseFloat(ingredient.pricePerUnit) || 0,
+      })));
+
+      resetCreateForm();
       setShowForm(false);
       setNewlyCreatedId(res.menu.id);
-      loadMenus();
+      await loadMenus();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Gagal menyimpan menu');
     } finally {
       setCreating(false);
     }
@@ -308,18 +406,89 @@ export default function MenuCatalogPage() {
           <h1 className="font-heading font-extrabold text-2xl">📖 Katalog Menu</h1>
           <p className="text-sm text-text-muted mt-1">Kelola daftar menu dengan bahan dan resep</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm">
+        <button onClick={handleToggleForm} className="btn-primary text-sm">
           {showForm ? '✕ Tutup' : '+ Tambah Menu'}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="glass-card p-5 mb-6 space-y-3 border border-primary/20">
+        <form onSubmit={handleCreate} noValidate className="glass-card p-5 mb-6 space-y-4 border border-primary/20">
           <h3 className="font-heading font-bold">Menu Baru</h3>
-          <input className="input-field" placeholder="Nama menu (contoh: Nasi Goreng Spesial)" value={newName} onChange={e => setNewName(e.target.value)} required />
+
+          <div>
+            <input
+              className="input-field"
+              placeholder="Nama menu (contoh: Nasi Goreng Spesial)"
+              value={newName}
+              onChange={e => {
+                setNewName(e.target.value);
+                setFormErrors(prev => ({ ...prev, name: '' }));
+                setError('');
+              }}
+            />
+            {formErrors.name && <p className="text-danger text-xs mt-1">{formErrors.name}</p>}
+          </div>
+
           <textarea className="input-field resize-none" rows={2} placeholder="Deskripsi singkat (opsional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} />
           <textarea className="input-field resize-none" rows={3} placeholder="Resep / cara masak (opsional)" value={newRecipe} onChange={e => setNewRecipe(e.target.value)} />
-          {error && <p className="text-sm text-danger">{error}</p>}
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="font-semibold">Bahan-bahan</h4>
+              <button type="button" onClick={handleAddIngredientRow} className="btn-secondary text-sm !py-1.5 !px-3">+ Tambah Bahan</button>
+            </div>
+
+            <div className="space-y-3">
+              {localIngredients.length === 0 ? (
+                <p className="text-sm text-text-muted">Belum ada bahan. Tambahkan minimal 1 bahan.</p>
+              ) : localIngredients.map(ingredient => (
+                <div key={ingredient.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_110px_110px_140px_auto] gap-3 items-start">
+                    <input
+                      className="input-field"
+                      placeholder="Nama bahan"
+                      value={ingredient.name}
+                      onChange={e => handleIngredientChange(ingredient.id, 'name', e.target.value)}
+                    />
+                    <input
+                      className="input-field"
+                      placeholder="Qty"
+                      type="number"
+                      step="any"
+                      value={ingredient.quantity}
+                      onChange={e => handleIngredientChange(ingredient.id, 'quantity', e.target.value)}
+                    />
+                    <input
+                      className="input-field"
+                      placeholder="Satuan"
+                      value={ingredient.unit}
+                      onChange={e => handleIngredientChange(ingredient.id, 'unit', e.target.value)}
+                    />
+                    <input
+                      className="input-field"
+                      placeholder="Harga/unit"
+                      type="number"
+                      step="any"
+                      value={ingredient.pricePerUnit}
+                      onChange={e => handleIngredientChange(ingredient.id, 'pricePerUnit', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveIngredientRow(ingredient.id)}
+                      className="h-11 w-11 flex items-center justify-center rounded-xl border border-danger/30 bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                      aria-label="Hapus bahan"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {formErrors.ingredients && <p className="text-danger text-sm">{formErrors.ingredients}</p>}
+          </div>
+
+          {error && <p className="text-danger text-sm">{error}</p>}
           <button type="submit" disabled={creating} className="btn-primary w-full">
             {creating ? 'Menyimpan...' : '💾 Simpan Menu'}
           </button>

@@ -108,6 +108,7 @@ function AssignMenuModal({
   const [mealType, setMealType] = useState('Makan Siang');
   const [note, setNote] = useState('');
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -117,6 +118,7 @@ function AssignMenuModal({
       setMealType('Makan Siang');
       setNote('');
       setSearch('');
+      setError('');
     }
   }, [isOpen]);
 
@@ -127,7 +129,12 @@ function AssignMenuModal({
   );
 
   const handleSubmit = () => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      setError('Pilih menu terlebih dahulu');
+      return;
+    }
+
+    setError('');
     setLoading(true);
     onAssign(selectedId, mealType, note || undefined);
     setLoading(false);
@@ -167,7 +174,7 @@ function AssignMenuModal({
             filtered.map(m => (
               <button
                 key={m.id}
-                onClick={() => setSelectedId(m.id)}
+                onClick={() => { setSelectedId(m.id); setError(''); }}
                 className={`w-full text-left p-3 rounded-xl border transition-all ${
                   selectedId === m.id
                     ? 'border-primary bg-primary/10'
@@ -193,9 +200,11 @@ function AssignMenuModal({
           onChange={e => setNote(e.target.value)}
         />
 
+        {error && <p className="text-danger text-sm">{error}</p>}
+
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">Batal</button>
-          <button onClick={handleSubmit} disabled={!selectedId || loading} className="btn-primary flex-1">
+          <button onClick={handleSubmit} disabled={loading} className="btn-primary flex-1">
             {loading ? '...' : 'Tambahkan'}
           </button>
         </div>
