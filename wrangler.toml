@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "mbg-database"
-database_id = "4c272255-6eba-49b4-b0b5-1b30f77978b9"
+database_id = "ed7a9b5f-12fa-4ddf-a5a1-e9fdea79ac97"
 
 [site]
 bucket = "./dist"
