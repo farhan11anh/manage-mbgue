@@ -125,6 +125,21 @@ app.patch('/avatar', authMiddleware, zValidator('json', z.object({ avatarUrl: z.
   return c.json({ user: updatedUser });
 });
 
+app.delete('/avatar', authMiddleware, async (c) => {
+  const user = (c as any).get('user') as AuthUser;
+  const db = drizzle(c.env.DB);
+
+  const result = await db.update(users)
+    .set({ avatarUrl: null })
+    .where(eq(users.id, user.id))
+    .returning();
+
+  const updatedUser = toAuthUser(result[0]);
+  await setAuthCookie(c, updatedUser);
+
+  return c.json({ user: updatedUser });
+});
+
 app.post('/change-password', authMiddleware, zValidator('json', changePasswordSchema), async (c) => {
   const user = (c as any).get('user') as AuthUser;
   const { oldPassword, newPassword } = c.req.valid('json');
