@@ -86,26 +86,28 @@ export default function WeeklyPlanPage() {
         </select>
       </div>
 
-      {/* Grid by day */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* Grid by day — equal height columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
         {DAYS.filter(d => !filterDay || d === filterDay).map(day => {
           const dayMenus = filteredMenus.filter(m => m.dayOfWeek === day);
           return (
-            <div key={day} className="glass-card p-4">
+            <div key={day} className="glass-card p-4 flex flex-col">
               <h3 className="font-heading font-bold text-primary mb-3">{day}</h3>
-              {dayMenus.length === 0 ? (
-                <p className="text-sm text-text-muted">Belum ada menu</p>
-              ) : (
-                <div className="space-y-3">
-                  {dayMenus.map(menu => (
-                    <MenuCard
-                      key={menu.id}
-                      menu={menu}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="flex-1">
+                {dayMenus.length === 0 ? (
+                  <p className="text-sm text-text-muted">Belum ada menu</p>
+                ) : (
+                  <div className="space-y-3">
+                    {dayMenus.map(menu => (
+                      <MenuCard
+                        key={menu.id}
+                        menu={menu}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}

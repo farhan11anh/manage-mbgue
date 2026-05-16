@@ -72,6 +72,22 @@ app.get('/:id', async (c) => {
     ? new Date(menu.createdAt) >= new Date(week.startDate + 'T00:00:00Z')
     : false;
 
+  // Cek apakah menu sudah terkunci (H-1 atau status final)
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  let isLocked = menu.status === 'approved' || menu.status === 'rejected';
+  if (!isLocked && week) {
+    const DAY_IDX: Record<string, number> = {
+      'Senin': 0, 'Selasa': 1, 'Rabu': 2, 'Kamis': 3,
+      'Jumat': 4, 'Sabtu': 5, 'Minggu': 6,
+    };
+    const start = new Date(week.startDate + 'T00:00:00Z');
+    start.setUTCDate(start.getUTCDate() + (DAY_IDX[menu.dayOfWeek] ?? 0));
+    const deadline = new Date(start);
+    deadline.setUTCDate(deadline.getUTCDate() - 1);
+    isLocked = today >= deadline;
+  }
+
   return c.json({
     menu: {
       ...menu,
@@ -81,6 +97,7 @@ app.get('/:id', async (c) => {
       votes: { up: upVotes?.count ?? 0, down: downVotes?.count ?? 0 },
       commentCount: commentCount?.count ?? 0,
       isLateProposal,
+      isLocked,
       weekStartDate: week?.startDate,
     },
   });

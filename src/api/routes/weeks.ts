@@ -51,13 +51,24 @@ async function autoApproveMenus(db: ReturnType<typeof drizzle>, weekData: any, m
   }
 }
 
-// Tandai apakah menu diusulkan telat (setelah minggu dimulai)
+// Tandai apakah menu diusulkan telat dan apakah sudah terkunci
 function enrichMenus(menus: any[], weekData: any) {
   const weekStart = new Date(weekData.startDate + 'T00:00:00Z');
-  return menus.map(m => ({
-    ...m,
-    isLateProposal: new Date(m.createdAt) >= weekStart,
-  }));
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  return menus.map(m => {
+    const menuDate = getMenuDate(weekData.startDate, m.dayOfWeek);
+    const deadline = new Date(menuDate);
+    deadline.setUTCDate(deadline.getUTCDate() - 1); // H-1
+    const isLocked = m.status === 'approved' || m.status === 'rejected' || today >= deadline;
+
+    return {
+      ...m,
+      isLateProposal: new Date(m.createdAt) >= weekStart,
+      isLocked,
+    };
+  });
 }
 
 const weekSchema = z.object({

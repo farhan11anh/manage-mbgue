@@ -79,6 +79,7 @@ export default function MenuDetailPage() {
   };
   const badge = statusLabel[menu.status as string] ?? statusLabel.proposed;
   const isOwner = user?.id === menu.proposedBy;
+  const isLocked = menu.isLocked;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
@@ -87,13 +88,25 @@ export default function MenuDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="font-heading font-extrabold text-2xl">{menu.menuName}</h1>
+              <h1 className={`font-heading font-extrabold text-2xl ${menu.actualMenuName ? 'line-through text-text-muted' : ''}`}>
+                {menu.menuName}
+              </h1>
               {menu.isLateProposal && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary/20 text-secondary border border-secondary/30">
                   ⚠️ Diusulkan Telat
                 </span>
               )}
+              {isLocked && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-text-muted border border-white/20">
+                  🔒 Terkunci
+                </span>
+              )}
             </div>
+            {menu.actualMenuName && (
+              <p className="font-heading font-bold text-xl text-success mt-1">
+                → {menu.actualMenuName}
+              </p>
+            )}
             <p className="text-text-muted text-sm mt-1">
               {menu.dayOfWeek} · {menu.mealType} · Oleh <span className="text-primary">{menu.proposerName}</span>
             </p>
@@ -114,76 +127,85 @@ export default function MenuDetailPage() {
         <VoteButton menuId={menuId} votes={menu.votes} onVoted={loadMenu} />
       </div>
 
-      {/* Menu Sebenarnya */}
-      <div className="glass-card p-6">
-        <h3 className="font-heading font-bold text-lg mb-3">🍽️ Menu Sebenarnya</h3>
-        <p className="text-xs text-text-muted mb-3">
-          Catat menu yang benar-benar dimasak jika berbeda dari usulan. Menu usulan tetap tercatat di atas.
-        </p>
-        {menu.actualMenuName && !editingActual ? (
-          <div className="flex items-center gap-3">
-            <div className="flex-1 px-4 py-3 rounded-xl bg-success/10 border border-success/20">
-              <span className="text-success font-semibold">{menu.actualMenuName}</span>
-              {menu.actualMenuName !== menu.menuName && (
-                <span className="text-xs text-text-muted ml-2">(berbeda dari usulan)</span>
+      {/* Menu Sebenarnya — hanya muncul jika terkunci */}
+      {isLocked && (
+        <div className="glass-card p-6">
+          <h3 className="font-heading font-bold text-lg mb-3">🍽️ Menu Sebenarnya</h3>
+          <p className="text-xs text-text-muted mb-3">
+            Menu sudah terkunci. Catat menu yang benar-benar dimasak beserta bahan-bahannya.
+          </p>
+          {menu.actualMenuName && !editingActual ? (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 px-4 py-3 rounded-xl bg-success/10 border border-success/20">
+                <span className="text-success font-semibold">{menu.actualMenuName}</span>
+                {menu.actualMenuName !== menu.menuName && (
+                  <span className="text-xs text-text-muted ml-2">(berbeda dari usulan)</span>
+                )}
+              </div>
+              <button
+                onClick={() => setEditingActual(true)}
+                className="text-xs text-primary hover:text-cyan-300 transition-colors"
+              >
+                Ubah
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                className="input-field flex-1"
+                placeholder="Masukkan nama menu yang benar-benar dimasak..."
+                value={actualName}
+                onChange={e => setActualName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSaveActual()}
+              />
+              <button
+                onClick={handleSaveActual}
+                disabled={savingActual || !actualName.trim()}
+                className="btn-primary !py-2"
+              >
+                {savingActual ? '...' : 'Simpan'}
+              </button>
+              {editingActual && (
+                <button
+                  onClick={() => { setEditingActual(false); setActualName(menu.actualMenuName || ''); }}
+                  className="text-text-muted text-sm hover:text-white"
+                >
+                  Batal
+                </button>
               )}
             </div>
-            <button
-              onClick={() => setEditingActual(true)}
-              className="text-xs text-primary hover:text-cyan-300 transition-colors"
-            >
-              Ubah
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              className="input-field flex-1"
-              placeholder="Masukkan nama menu yang benar-benar dimasak..."
-              value={actualName}
-              onChange={e => setActualName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSaveActual()}
-            />
-            <button
-              onClick={handleSaveActual}
-              disabled={savingActual || !actualName.trim()}
-              className="btn-primary !py-2"
-            >
-              {savingActual ? '...' : 'Simpan'}
-            </button>
-            {editingActual && (
-              <button
-                onClick={() => { setEditingActual(false); setActualName(menu.actualMenuName || ''); }}
-                className="text-text-muted text-sm hover:text-white"
-              >
-                Batal
-              </button>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Bahan Menu Sebenarnya */}
-        {menu.actualMenuName && (
-          <div className="mt-5 pt-4 border-t border-white/10">
-            <h4 className="font-heading font-semibold text-sm mb-3 text-success">📦 Bahan Menu Sebenarnya</h4>
-            <IngredientTable
-              menuId={menuId}
-              ingredients={menu.actualIngredients || []}
-              editable
-              isActual
-              onUpdate={loadMenu}
-            />
-          </div>
-        )}
-      </div>
+          {/* Bahan Menu Sebenarnya */}
+          {menu.actualMenuName && (
+            <div className="mt-5 pt-4 border-t border-white/10">
+              <h4 className="font-heading font-semibold text-sm mb-3 text-success">📦 Bahan Menu Sebenarnya</h4>
+              <IngredientTable
+                menuId={menuId}
+                ingredients={menu.actualIngredients || []}
+                editable
+                isActual
+                onUpdate={loadMenu}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Ingredients */}
+      {/* Bahan Usulan — editable hanya jika belum terkunci */}
       <div className="glass-card p-6">
-        <h3 className="font-heading font-bold text-lg mb-4">🥬 Bahan Makanan (Usulan)</h3>
+        <h3 className="font-heading font-bold text-lg mb-4">
+          🥬 Bahan Makanan {isLocked ? '(Usulan)' : ''}
+        </h3>
+        {!isLocked && (
+          <p className="text-xs text-text-muted mb-3">
+            Menu belum terkunci, bahan masih bisa diedit.
+          </p>
+        )}
         <IngredientTable
           menuId={menuId}
           ingredients={menu.ingredients}
-          editable
+          editable={!isLocked}
           onUpdate={loadMenu}
         />
       </div>

@@ -4,11 +4,13 @@ interface MenuCardProps {
   menu: {
     id: number;
     menuName: string;
+    actualMenuName?: string;
     dayOfWeek: string;
     mealType: string;
     status: string;
     description?: string;
     isLateProposal?: boolean;
+    isLocked?: boolean;
   };
   votes?: { up: number; down: number };
   commentCount?: number;
@@ -22,6 +24,7 @@ export default function MenuCard({ menu, votes, commentCount, onDelete }: MenuCa
     rejected: { class: 'badge-rejected', text: '❌ Ditolak' },
   };
   const badge = statusLabel[menu.status] ?? statusLabel.proposed;
+  const hasActual = !!menu.actualMenuName;
 
   return (
     <div className="glass-card p-4 hover:border-primary/30 hover:shadow-neon/20 transition-all duration-300 hover:-translate-y-1 relative">
@@ -32,8 +35,17 @@ export default function MenuCard({ menu, votes, commentCount, onDelete }: MenuCa
       )}
       <Link to={`/menus/${menu.id}`} className="block">
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-heading font-bold text-lg text-text-main">{menu.menuName}</h3>
-          <span className={badge.class}>{badge.text}</span>
+          <div className="flex-1 min-w-0">
+            <h3 className={`font-heading font-bold text-lg ${hasActual ? 'line-through text-text-muted/60 text-base' : 'text-text-main'}`}>
+              {menu.menuName}
+            </h3>
+            {hasActual && (
+              <h3 className="font-heading font-bold text-lg text-success">
+                → {menu.actualMenuName}
+              </h3>
+            )}
+          </div>
+          <span className={`${badge.class} shrink-0 ml-2`}>{badge.text}</span>
         </div>
         <p className="text-xs text-text-muted mb-2">{menu.mealType}</p>
         {menu.description && (
