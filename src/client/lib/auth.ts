@@ -5,6 +5,7 @@ export interface User {
   id: number;
   username: string;
   displayName: string;
+  avatarUrl?: string | null;
   isAdmin: number;
   mustChangePassword: number;
 }

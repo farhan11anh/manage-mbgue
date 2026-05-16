@@ -9,6 +9,7 @@ export interface AuthUser {
   id: number;
   username: string;
   displayName: string;
+  avatarUrl: string | null;
   isAdmin: number;
   mustChangePassword: number;
 }
@@ -37,6 +38,7 @@ export async function authMiddleware(c: Context, next: Next) {
       id: users.id,
       username: users.username,
       displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
       isAdmin: users.isAdmin,
       mustChangePassword: users.mustChangePassword,
     }).from(users).where(eq(users.id, userId)).get();
@@ -68,6 +70,7 @@ export async function createToken(user: AuthUser, secret: string): Promise<strin
     id: user.id,
     username: user.username,
     displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
     isAdmin: user.isAdmin,
     mustChangePassword: user.mustChangePassword,
   })

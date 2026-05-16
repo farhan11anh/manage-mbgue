@@ -41,7 +41,7 @@ export default function Navbar() {
           {dropdownOpen && (
             <div className="absolute right-0 top-full mt-2 glass-card p-2 min-w-[200px] border border-white/10 rounded-xl">
               <div className="flex items-center gap-3 px-3 py-3 border-b border-white/10 mb-1">
-                <Avatar size="md" />
+                <Avatar size="md" editable />
                 <div>
                   <p className="text-sm font-semibold">{user?.displayName}</p>
                   <p className="text-xs text-text-muted">@{user?.username}</p>
@@ -85,10 +85,10 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden mt-3 space-y-2 pb-3">
           <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 mb-2">
-            <Avatar size="md" />
+            <Avatar size="md" editable />
             <div>
               <p className="text-sm font-semibold">{user?.displayName}</p>
-              <p className="text-xs text-text-muted">@{user?.username}</p>
+              <p className="text-xs text-text-muted">Tap foto untuk ganti</p>
             </div>
           </div>
           <Link to="/" className="block px-3 py-2 text-text-muted hover:text-primary" onClick={() => setMenuOpen(false)}>Dashboard</Link>
