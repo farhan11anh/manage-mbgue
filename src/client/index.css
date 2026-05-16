@@ -5,9 +5,28 @@
 @layer base {
   body {
     @apply bg-bg-dark text-text-main font-body;
-    background-image: radial-gradient(ellipse at 20% 50%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
-                      radial-gradient(ellipse at 80% 20%, rgba(162, 89, 255, 0.08) 0%, transparent 50%);
+    background-image: url('/src/img/bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 20, 0.82);
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(0, 229, 255, 0.06) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 20%, rgba(162, 89, 255, 0.06) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
   }
 }
 
