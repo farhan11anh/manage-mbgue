@@ -2,14 +2,63 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, lte, gte } from 'drizzle-orm';
-import { weeks, menuProposals } from '../db/schema';
+import { eq, and, lte, gte, sql } from 'drizzle-orm';
+import { weeks, menuProposals, votes } from '../db/schema';
 import { authMiddleware, AuthUser } from '../middleware/auth';
 
 type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } };
 const app = new Hono<Env>();
 
 app.use('*', authMiddleware);
+
+const DAY_INDEX: Record<string, number> = {
+  'Senin': 0, 'Selasa': 1, 'Rabu': 2, 'Kamis': 3,
+  'Jumat': 4, 'Sabtu': 5, 'Minggu': 6,
+};
+
+// Hitung tanggal menu dari startDate + dayOfWeek
+function getMenuDate(startDate: string, dayOfWeek: string): Date {
+  const start = new Date(startDate + 'T00:00:00Z');
+  const offset = DAY_INDEX[dayOfWeek] ?? 0;
+  const d = new Date(start);
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d;
+}
+
+// Auto-approve: jika sudah H-1 dan tidak ada vote down → approved
+async function autoApproveMenus(db: ReturnType<typeof drizzle>, weekData: any, menus: any[]) {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  for (const menu of menus) {
+    if (menu.status !== 'proposed') continue;
+
+    const menuDate = getMenuDate(weekData.startDate, menu.dayOfWeek);
+    const deadline = new Date(menuDate);
+    deadline.setUTCDate(deadline.getUTCDate() - 1); // H-1
+
+    if (today >= deadline) {
+      const downVotes = await db.select({ count: sql<number>`count(*)` }).from(votes)
+        .where(sql`${votes.menuProposalId} = ${menu.id} AND ${votes.voteType} = 'down'`).get();
+
+      if ((downVotes?.count ?? 0) === 0) {
+        await db.update(menuProposals)
+          .set({ status: 'approved' })
+          .where(eq(menuProposals.id, menu.id));
+        menu.status = 'approved';
+      }
+    }
+  }
+}
+
+// Tandai apakah menu diusulkan telat (setelah minggu dimulai)
+function enrichMenus(menus: any[], weekData: any) {
+  const weekStart = new Date(weekData.startDate + 'T00:00:00Z');
+  return menus.map(m => ({
+    ...m,
+    isLateProposal: new Date(m.createdAt) >= weekStart,
+  }));
+}
 
 const weekSchema = z.object({
   startDate: z.string(),
@@ -67,7 +116,10 @@ app.get('/:id', async (c) => {
 
   const menus = await db.select().from(menuProposals).where(eq(menuProposals.weekId, id)).all();
 
-  return c.json({ week, menus });
+  // Auto-approve eligible menus
+  await autoApproveMenus(db, week, menus);
+
+  return c.json({ week, menus: enrichMenus(menus, week) });
 });
 
 export default app;

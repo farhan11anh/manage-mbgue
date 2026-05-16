@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, sql } from 'drizzle-orm';
-import { menuProposals, ingredients, votes, comments, users } from '../db/schema';
+import { menuProposals, ingredients, votes, comments, users, weeks } from '../db/schema';
 import { authMiddleware, AuthUser } from '../middleware/auth';
 
 type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } };
@@ -52,6 +52,7 @@ app.get('/:id', async (c) => {
   const menu = await db.select().from(menuProposals).where(eq(menuProposals.id, id)).get();
   if (!menu) return c.json({ error: 'Menu tidak ditemukan' }, 404);
 
+  const week = await db.select().from(weeks).where(eq(weeks.id, menu.weekId)).get();
   const proposer = await db.select({ displayName: users.displayName }).from(users).where(eq(users.id, menu.proposedBy)).get();
   const menuIngredients = await db.select().from(ingredients).where(eq(ingredients.menuProposalId, id)).all();
 
@@ -63,6 +64,11 @@ app.get('/:id', async (c) => {
   const commentCount = await db.select({ count: sql<number>`count(*)` }).from(comments)
     .where(sql`${comments.menuProposalId} = ${id} AND ${comments.deletedAt} IS NULL`).get();
 
+  // Cek apakah diusulkan telat (setelah minggu berjalan)
+  const isLateProposal = week
+    ? new Date(menu.createdAt) >= new Date(week.startDate + 'T00:00:00Z')
+    : false;
+
   return c.json({
     menu: {
       ...menu,
@@ -70,6 +76,8 @@ app.get('/:id', async (c) => {
       ingredients: menuIngredients,
       votes: { up: upVotes?.count ?? 0, down: downVotes?.count ?? 0 },
       commentCount: commentCount?.count ?? 0,
+      isLateProposal,
+      weekStartDate: week?.startDate,
     },
   });
 });

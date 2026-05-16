@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import MenuCard from '../components/MenuCard';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -8,6 +9,7 @@ const MEAL_TYPES = ['Sarapan', 'Makan Siang', 'Makan Malam'];
 
 export default function WeeklyPlanPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [week, setWeek] = useState<any>(null);
   const [menus, setMenus] = useState<any[]>([]);
   const [filterDay, setFilterDay] = useState('');
@@ -24,6 +26,16 @@ export default function WeeklyPlanPage() {
       setMenus(res.menus);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDelete = async (menuId: number) => {
+    if (!confirm('Yakin ingin menghapus menu ini?')) return;
+    try {
+      await api.deleteMenu(menuId);
+      loadData();
+    } catch (e: any) {
+      alert(e.message || 'Gagal menghapus');
     }
   };
 
@@ -78,7 +90,11 @@ export default function WeeklyPlanPage() {
               ) : (
                 <div className="space-y-3">
                   {dayMenus.map(menu => (
-                    <MenuCard key={menu.id} menu={menu} />
+                    <MenuCard
+                      key={menu.id}
+                      menu={menu}
+                      onDelete={menu.proposedBy === user?.id ? handleDelete : undefined}
+                    />
                   ))}
                 </div>
               )}
